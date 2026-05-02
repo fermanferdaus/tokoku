@@ -130,24 +130,42 @@ class _CartScreenState extends State<CartScreen> {
         children: [
           Icon(
             Icons.shopping_cart_outlined,
-            size: 80,
-            color: AppColors.textTertiary.withOpacity(0.5),
+            size: 72,
+            color: AppColors.textTertiary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
-          Text('Keranjang Kosong', style: AppTextStyles.headlineSmall),
+          Text(
+            'Keranjang Kosong',
+            style: AppTextStyles.headlineSmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Belum ada produk di keranjang.\nSilakan pilih produk untuk memulai transaksi.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textTertiary,
+            ),
+          ),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () => context.pop(),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+              elevation: 0,
             ),
             child: const Text(
               'Mulai Belanja',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
           ),
         ],

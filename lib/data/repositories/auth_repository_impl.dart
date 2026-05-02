@@ -1,3 +1,5 @@
+import 'package:tokoku/data/models/user_model.dart';
+
 import '../../core/errors/exceptions.dart';
 import '../../core/errors/failures.dart';
 import '../../domain/entities/user_entity.dart';
@@ -24,19 +26,10 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<UserEntity> signInWithGoogle() async {
-    try {
-      final userModel = await _remoteDatasource.signInWithGoogle();
-      return userModel.toEntity();
-    } on AuthException catch (e) {
-      throw AuthFailure(e.message);
-    }
-  }
-
-  @override
   Future<UserEntity> signInWithEmail(String email, String password) async {
     try {
-      final userModel = await _remoteDatasource.signInWithEmail(email, password);
+      final userModel =
+          await _remoteDatasource.signInWithEmail(email, password);
       return userModel.toEntity();
     } on AuthException catch (e) {
       throw AuthFailure(e.message);
@@ -48,12 +41,14 @@ class AuthRepositoryImpl implements AuthRepository {
     required String name,
     required String email,
     required String password,
+    String role = 'kasir',
   }) async {
     try {
       final userModel = await _remoteDatasource.signUpWithEmail(
         name: name,
         email: email,
         password: password,
+        role: role,
       );
       return userModel.toEntity();
     } on AuthException catch (e) {
@@ -65,6 +60,45 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> signOut() async {
     try {
       await _remoteDatasource.signOut();
+    } on AuthException catch (e) {
+      throw AuthFailure(e.message);
+    }
+  }
+
+  @override
+  Future<List<UserEntity>> getUsers() async {
+    try {
+      final userModels = await _remoteDatasource.getAllUsers();
+      return userModels.map((m) => m.toEntity()).toList();
+    } on AuthException catch (e) {
+      throw AuthFailure(e.message);
+    }
+  }
+
+  @override
+  Future<void> deleteUser(String uid) async {
+    try {
+      await _remoteDatasource.deleteUser(uid);
+    } on AuthException catch (e) {
+      throw AuthFailure(e.message);
+    }
+  }
+
+  @override
+  Future<void> updateUser(UserEntity user, {String? password}) async {
+    try {
+      await _remoteDatasource.updateUser(
+        UserModel(
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          role: user.role,
+          photoUrl: user.photoUrl,
+          createdAt: user.createdAt,
+          lastLoginAt: user.lastLoginAt,
+        ),
+        password: password,
+      );
     } on AuthException catch (e) {
       throw AuthFailure(e.message);
     }

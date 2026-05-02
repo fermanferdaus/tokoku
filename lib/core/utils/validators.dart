@@ -87,4 +87,12 @@ class Validators {
     }
     return null;
   }
+
+  /// Validasi kode akses admin (hanya mengecek apakah kosong).
+  static String? validateAdminAccessCode(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Kode akses admin wajib diisi';
+    }
+    return null;
+  }
 }

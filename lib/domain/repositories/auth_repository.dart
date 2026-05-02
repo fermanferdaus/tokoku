@@ -8,9 +8,6 @@ abstract class AuthRepository {
   /// User yang sedang login saat ini.
   UserEntity get currentUser;
 
-  /// Login menggunakan akun Google.
-  Future<UserEntity> signInWithGoogle();
-
   /// Login menggunakan Email & Password.
   Future<UserEntity> signInWithEmail(String email, String password);
 
@@ -19,8 +16,18 @@ abstract class AuthRepository {
     required String name,
     required String email,
     required String password,
+    String role = 'kasir',
   });
 
   /// Logout dari aplikasi.
   Future<void> signOut();
+
+  /// Ambil semua user (Admin Only).
+  Future<List<UserEntity>> getUsers();
+
+  /// Hapus user berdasarkan UID.
+  Future<void> deleteUser(String uid);
+
+  /// Update data user.
+  Future<void> updateUser(UserEntity user, {String? password});
 }

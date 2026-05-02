@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tokoku/domain/entities/user_entity.dart';
 import 'package:tokoku/presentation/blocs/cart/cart_state.dart';
 
 import '../../domain/repositories/product_repository.dart';
@@ -13,6 +14,7 @@ import '../../presentation/screens/product/product_form_screen.dart';
 import '../../presentation/screens/transaction/transaction_screen.dart';
 import '../../presentation/screens/transaction/cart_screen.dart';
 import '../../presentation/screens/transaction/invoice_screen.dart';
+import '../../presentation/screens/home/user_form_screen.dart';
 import '../../presentation/screens/splash/splash_screen.dart';
 
 /// Konfigurasi routing menggunakan GoRouter.
@@ -25,6 +27,8 @@ class AppRouter {
   static const String home = '/home';
   static const String productAdd = '/product/add';
   static const String productEdit = '/product/edit/:id';
+  static const String userAdd = '/user/add';
+  static const String userEdit = '/user/edit/:id';
   static const String transaction = '/transaction';
   static const String cart = '/transaction/cart';
   static const String invoice = '/transaction/invoice';
@@ -46,8 +50,12 @@ class AppRouter {
           return isOnSplash ? null : splash;
         }
 
-        // Jika sedang di Splash, biarkan SplashScreen yang mengatur navigasi awal
-        if (isOnSplash) return null;
+        // Jika sedang di Splash dan status sudah jelas (bukan loading/initial), arahkan ke home atau login
+        if (isOnSplash) {
+          if (authState is AuthAuthenticated) return home;
+          if (authState is AuthUnauthenticated) return login;
+          return null; // Tetap di splash selama loading
+        }
 
         // Pendaftaran berhasil — arahkan ke login
         if (authState is AuthRegistrationSuccess) {
@@ -62,6 +70,18 @@ class AppRouter {
 
         // Sudah login — arahkan ke home
         if (authState is AuthAuthenticated) {
+          final isAdmin = authState.user.role == 'admin';
+          final isRestrictedPath =
+              state.matchedLocation == productAdd ||
+              state.matchedLocation.startsWith('/product/edit') ||
+              state.matchedLocation == userAdd ||
+              state.matchedLocation.startsWith('/user/edit');
+
+          // Jika bukan admin mencoba akses halaman admin, lempar balik ke home
+          if (!isAdmin && isRestrictedPath) {
+            return home;
+          }
+
           return (isOnLogin || isOnRegister) ? home : null;
         }
 
@@ -113,14 +133,25 @@ class AppRouter {
                 }
                 if (snapshot.hasError) {
                   return Scaffold(
-                    body: Center(
-                      child: Text('Error: ${snapshot.error}'),
-                    ),
+                    body: Center(child: Text('Error: ${snapshot.error}')),
                   );
                 }
                 return ProductFormScreen(product: snapshot.data!);
               },
             );
+          },
+        ),
+        GoRoute(
+          path: userAdd,
+          name: 'userAdd',
+          builder: (context, state) => const UserFormScreen(),
+        ),
+        GoRoute(
+          path: userEdit,
+          name: 'userEdit',
+          builder: (context, state) {
+            final user = state.extra as UserEntity;
+            return UserFormScreen(user: user);
           },
         ),
         GoRoute(

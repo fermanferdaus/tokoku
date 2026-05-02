@@ -13,11 +13,6 @@ class AuthCheckRequested extends AuthEvent {
   const AuthCheckRequested();
 }
 
-/// User menekan tombol "Sign in with Google".
-class AuthGoogleSignInRequested extends AuthEvent {
-  const AuthGoogleSignInRequested();
-}
-
 /// User menekan tombol login email.
 class AuthEmailSignInRequested extends AuthEvent {
   final String email;
@@ -34,15 +29,19 @@ class AuthEmailSignUpRequested extends AuthEvent {
   final String name;
   final String email;
   final String password;
+  final String role;
+  final String accessCode;
 
   const AuthEmailSignUpRequested({
     required this.name,
     required this.email,
     required this.password,
+    this.role = 'kasir',
+    required this.accessCode,
   });
 
   @override
-  List<Object?> get props => [name, email, password];
+  List<Object?> get props => [name, email, password, role, accessCode];
 }
 
 /// User menekan tombol logout.

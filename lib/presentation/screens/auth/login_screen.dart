@@ -150,30 +150,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           text: 'Masuk Sekarang',
                           onPressed: isLoading ? null : _onEmailLogin,
                         ),
-                        const SizedBox(height: 24),
-
-                        // Divider
-                        Row(
-                          children: [
-                            const Expanded(child: Divider()),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: Text(
-                                'atau',
-                                style: AppTextStyles.bodySmall.copyWith(
-                                  color: AppColors.textTertiary,
-                                ),
-                              ),
-                            ),
-                            const Expanded(child: Divider()),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Google Sign-In
-                        _buildGoogleButton(context, isLoading),
                         const SizedBox(height: 32),
 
                         // Register Link
@@ -207,44 +183,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildGoogleButton(BuildContext context, bool isLoading) {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: OutlinedButton(
-        onPressed: isLoading
-            ? null
-            : () => context.read<AuthBloc>().add(
-                const AuthGoogleSignInRequested(),
-              ),
-        style: OutlinedButton.styleFrom(
-          backgroundColor: AppColors.surface,
-          side: const BorderSide(color: AppColors.border, width: 1.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.g_mobiledata_rounded,
-              size: 32,
-              color: Color(0xFF4285F4),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Masuk dengan Google',
-              style: AppTextStyles.titleMedium.copyWith(
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

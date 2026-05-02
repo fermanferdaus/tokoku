@@ -8,6 +8,7 @@ class UserModel extends UserEntity {
     required super.uid,
     required super.email,
     required super.displayName,
+    required super.role,
     super.photoUrl,
     super.createdAt,
     super.lastLoginAt,
@@ -20,6 +21,7 @@ class UserModel extends UserEntity {
       uid: doc.id,
       email: data['email'] ?? '',
       displayName: data['displayName'] ?? '',
+      role: data['role'] ?? 'kasir',
       photoUrl: data['photoUrl'],
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       lastLoginAt: (data['lastLoginAt'] as Timestamp?)?.toDate(),
@@ -31,12 +33,14 @@ class UserModel extends UserEntity {
     required String uid,
     required String email,
     required String displayName,
+    String? role,
     String? photoUrl,
   }) {
     return UserModel(
       uid: uid,
       email: email,
       displayName: displayName,
+      role: role ?? 'kasir',
       photoUrl: photoUrl,
     );
   }
@@ -46,6 +50,7 @@ class UserModel extends UserEntity {
     return {
       'email': email,
       'displayName': displayName,
+      'role': role,
       'photoUrl': photoUrl,
       'lastLoginAt': FieldValue.serverTimestamp(),
     };
@@ -56,6 +61,7 @@ class UserModel extends UserEntity {
     return {
       'email': email,
       'displayName': displayName,
+      'role': role,
       'photoUrl': photoUrl,
       'createdAt': FieldValue.serverTimestamp(),
       'lastLoginAt': FieldValue.serverTimestamp(),
@@ -68,6 +74,7 @@ class UserModel extends UserEntity {
       uid: uid,
       email: email,
       displayName: displayName,
+      role: role,
       photoUrl: photoUrl,
       createdAt: createdAt,
       lastLoginAt: lastLoginAt,

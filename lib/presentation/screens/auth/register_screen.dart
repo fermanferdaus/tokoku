@@ -25,8 +25,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _accessCodeController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  bool _isAccessCodeVisible = false;
 
   @override
   void dispose() {
@@ -34,6 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _accessCodeController.dispose();
     super.dispose();
   }
 
@@ -44,6 +47,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               name: _nameController.text.trim(),
               email: _emailController.text.trim(),
               password: _passwordController.text,
+              role: 'admin',
+              accessCode: _accessCodeController.text.trim(),
             ),
           );
     }
@@ -206,6 +211,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                           validator: (v) => Validators.validateConfirmPassword(v, _passwordController.text),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Admin Access Code
+                        Text('Kode Akses Admin', style: AppTextStyles.labelLarge),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _accessCodeController,
+                          obscureText: !_isAccessCodeVisible,
+                          decoration: InputDecoration(
+                            hintText: 'Masukkan kode akses khusus admin',
+                            prefixIcon: const Icon(Icons.vpn_key_outlined),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isAccessCodeVisible
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                              ),
+                              onPressed: () => setState(
+                                  () => _isAccessCodeVisible = !_isAccessCodeVisible),
+                            ),
+                          ),
+                          validator: Validators.validateAdminAccessCode,
                         ),
                         const SizedBox(height: 32),
 

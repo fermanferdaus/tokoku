@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:flutter/services.dart';
+import 'package:tokoku/presentation/blocs/auth/auth_bloc.dart';
+import 'package:tokoku/presentation/blocs/auth/auth_state.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -71,53 +72,66 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<ProductBloc, ProductState>(
-      listener: (context, state) {
-        if (state is ProductOperationSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    color: Colors.white,
-                    size: 18,
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, authState) {
+        final user = authState is AuthAuthenticated ? authState.user : null;
+        final isAdmin = user?.role == 'admin';
+
+        return BlocListener<ProductBloc, ProductState>(
+          listener: (context, state) {
+            if (state is ProductOperationSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(state.message)),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(state.message)),
-                ],
-              ),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
+                  backgroundColor: AppColors.success,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            } else if (state is ProductError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            body: Column(
+              children: [
+                _buildSearchBar(),
+                Expanded(child: _buildProductList()),
+              ],
             ),
-          );
-        } else if (state is ProductError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            _buildSearchBar(),
-            Expanded(child: _buildProductList()),
-          ],
-        ),
-        floatingActionButton: Padding(
-          padding: const EdgeInsets.only(bottom: 100),
-          child: FloatingActionButton(
-            onPressed: () => context.push('/product/add'),
-            backgroundColor: AppColors.primary,
-            child: const Icon(Icons.add_rounded, color: Colors.white),
+            floatingActionButton: isAdmin
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 100),
+                    child: FloatingActionButton(
+                      onPressed: () => context.push('/product/add'),
+                      backgroundColor: AppColors.primary,
+                      child: const Icon(
+                        Icons.add_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                  )
+                : null,
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -251,7 +265,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
             return Center(
               child: Text(
                 'Tidak ada produk yang sesuai filter',
-                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textTertiary),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textTertiary,
+                ),
               ),
             );
           }
@@ -354,7 +370,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
           Stack(
             children: [
               Container(
-                height: 150, // Fixed height for image area to keep it consistent but allow card to expand
+                height:
+                    150, // Fixed height for image area to keep it consistent but allow card to expand
                 width: double.infinity,
                 child: product.imageUrl != null && product.imageUrl!.isNotEmpty
                     ? CachedNetworkImage(
@@ -446,37 +463,63 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
-                const Divider(height: 1, color: AppColors.border),
-                // Actions
-                Row(
-                  children: [
-                    Expanded(
-                      child: IconButton(
-                        onPressed: () =>
-                            context.push('/product/edit/${product.id}'),
-                        icon: const Icon(
-                          Icons.edit_square,
-                          size: 18,
-                          color: AppColors.textTertiary,
+                BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, authState) {
+                    final user = authState is AuthAuthenticated
+                        ? authState.user
+                        : null;
+                    final isAdmin = user?.role == 'admin';
+
+                    if (!isAdmin) return const SizedBox(height: 8);
+
+                    return Column(
+                      children: [
+                        const Divider(height: 1, color: AppColors.border),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: IconButton(
+                                onPressed: () =>
+                                    context.push('/product/edit/${product.id}'),
+                                icon: const Icon(
+                                  Icons.edit_outlined,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minHeight: 36,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              height: 20,
+                              color: AppColors.border,
+                            ),
+                            Expanded(
+                              child: IconButton(
+                                onPressed: () => _confirmDelete(product),
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 20,
+                                  color: Color(0xFFFF4D6D),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minHeight: 36,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        constraints: const BoxConstraints(minHeight: 36),
-                      ),
-                    ),
-                    Container(width: 1, height: 20, color: AppColors.border),
-                    Expanded(
-                      child: IconButton(
-                        onPressed: () => _confirmDelete(product),
-                        icon: const Icon(
-                          Icons.delete_outline_rounded,
-                          size: 18,
-                          color: Color(0xFFFF4D6D),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        constraints: const BoxConstraints(minHeight: 36),
-                      ),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -525,13 +568,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
       ),
     );
   }
+
   void _showFilterModal() {
     String tempPriceSort = _priceSort;
     String? tempCategory = _selectedCategory;
-    
+
     // Copy current values to controllers
-    _minPriceController.text = _minPrice != null ? Formatters.number(_minPrice!) : '';
-    _maxPriceController.text = _maxPrice != null ? Formatters.number(_maxPrice!) : '';
+    _minPriceController.text = _minPrice != null
+        ? Formatters.number(_minPrice!)
+        : '';
+    _maxPriceController.text = _maxPrice != null
+        ? Formatters.number(_maxPrice!)
+        : '';
 
     showModalBottomSheet(
       context: context,
@@ -557,10 +605,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Filter Produk',
-                          style: AppTextStyles.titleLarge,
-                        ),
+                        Text('Filter Produk', style: AppTextStyles.titleLarge),
                         IconButton(
                           onPressed: () => context.pop(),
                           icon: const Icon(Icons.close_rounded),
@@ -580,7 +625,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           selected: tempPriceSort == 'none',
                           selectedColor: AppColors.primaryContainer,
                           onSelected: (selected) {
-                            if (selected) setModalState(() => tempPriceSort = 'none');
+                            if (selected)
+                              setModalState(() => tempPriceSort = 'none');
                           },
                         ),
                         ChoiceChip(
@@ -588,7 +634,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           selected: tempPriceSort == 'asc',
                           selectedColor: AppColors.primaryContainer,
                           onSelected: (selected) {
-                            if (selected) setModalState(() => tempPriceSort = 'asc');
+                            if (selected)
+                              setModalState(() => tempPriceSort = 'asc');
                           },
                         ),
                         ChoiceChip(
@@ -596,7 +643,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           selected: tempPriceSort == 'desc',
                           selectedColor: AppColors.primaryContainer,
                           onSelected: (selected) {
-                            if (selected) setModalState(() => tempPriceSort = 'desc');
+                            if (selected)
+                              setModalState(() => tempPriceSort = 'desc');
                           },
                         ),
                       ],
@@ -615,7 +663,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             selected: tempCategory == null,
                             selectedColor: AppColors.primaryContainer,
                             onSelected: (selected) {
-                              if (selected) setModalState(() => tempCategory = null);
+                              if (selected)
+                                setModalState(() => tempCategory = null);
                             },
                           ),
                           ..._categories.map((cat) {
@@ -651,7 +700,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                             ),
                           ),
                         ),
@@ -667,7 +718,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                             ),
                           ),
                         ),
@@ -704,12 +757,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               setState(() {
                                 _priceSort = tempPriceSort;
                                 _selectedCategory = tempCategory;
-                                
-                                final minText = _minPriceController.text.replaceAll(RegExp(r'[^\d]'), '');
-                                _minPrice = minText.isNotEmpty ? double.tryParse(minText) : null;
-                                
-                                final maxText = _maxPriceController.text.replaceAll(RegExp(r'[^\d]'), '');
-                                _maxPrice = maxText.isNotEmpty ? double.tryParse(maxText) : null;
+
+                                final minText = _minPriceController.text
+                                    .replaceAll(RegExp(r'[^\d]'), '');
+                                _minPrice = minText.isNotEmpty
+                                    ? double.tryParse(minText)
+                                    : null;
+
+                                final maxText = _maxPriceController.text
+                                    .replaceAll(RegExp(r'[^\d]'), '');
+                                _maxPrice = maxText.isNotEmpty
+                                    ? double.tryParse(maxText)
+                                    : null;
                               });
                               context.pop();
                             },

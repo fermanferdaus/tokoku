@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:tokoku/presentation/screens/product/product_list_screen.dart';
+import 'package:tokoku/presentation/screens/transaction/transaction_screen.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
-import '../product/product_list_screen.dart';
-import '../transaction/transaction_screen.dart';
+import '../home/user_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final int initialIndex;
@@ -31,46 +32,80 @@ class _HomeScreenState extends State<HomeScreen> {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         final user = state is AuthAuthenticated ? state.user : null;
+        final isAdmin = user?.role == 'admin';
 
         return Scaffold(
           backgroundColor: AppColors.background,
           extendBody: true,
-          appBar: _buildAppBar(user),
-          body: _buildBody(user),
-          bottomNavigationBar: _buildBottomNav(),
+          appBar: _buildAppBar(user, isAdmin),
+          body: _buildBody(user, isAdmin),
+          bottomNavigationBar: _buildBottomNav(isAdmin),
         );
       },
     );
   }
 
-  Widget _buildBody(dynamic user) {
-    switch (_currentIndex) {
-      case 0:
-        return _DashboardBody(
-          user: user,
-          onTabChange: (index) => setState(() => _currentIndex = index),
-        );
-      case 1:
-        return const ProductListScreen();
-      case 2:
-        return const TransactionScreen();
-      default:
-        return Center(
-          child: Text(
-            ['Beranda', 'Produk', 'Transaksi', 'Laporan', 'Profil'][_currentIndex],
-            style: AppTextStyles.headlineMedium,
-          ),
-        );
+  Widget _buildBody(dynamic user, bool isAdmin) {
+    if (isAdmin) {
+      switch (_currentIndex) {
+        case 0:
+          return _DashboardBody(
+            user: user,
+            isAdmin: true,
+            onTabChange: (index) => setState(() => _currentIndex = index),
+          );
+        case 1:
+          return const ProductListScreen();
+        case 2:
+          return const UserManagementScreen();
+        case 3:
+          return _PlaceholderBody(title: 'Laporan');
+        case 4:
+          return _PlaceholderBody(title: 'Pengaturan');
+        default:
+          return const SizedBox.shrink();
+      }
+    } else {
+      // Cashier
+      switch (_currentIndex) {
+        case 0:
+          return _DashboardBody(
+            user: user,
+            isAdmin: false,
+            onTabChange: (index) => setState(() => _currentIndex = index),
+          );
+        case 1:
+          return const ProductListScreen();
+        case 2:
+          return const TransactionScreen();
+        case 3:
+          return _PlaceholderBody(title: 'Profil');
+        default:
+          return const SizedBox.shrink();
+      }
     }
   }
 
-  PreferredSizeWidget _buildAppBar(dynamic user) {
+  PreferredSizeWidget _buildAppBar(dynamic user, bool isAdmin) {
+    String title = '';
+    if (isAdmin) {
+      title = [
+        'Dashboard',
+        'Produk',
+        'Kelola User',
+        'Laporan',
+        'Pengaturan',
+      ][_currentIndex];
+    } else {
+      title = ['Dashboard', 'Produk', 'Transaksi', 'Profil'][_currentIndex];
+    }
+
     return AppBar(
       backgroundColor: AppColors.background,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       title: Text(
-        ['Dashboard', 'Produk', 'Transaksi', 'Laporan', 'Profil'][_currentIndex],
+        title,
         style: AppTextStyles.headlineMedium.copyWith(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,
@@ -100,7 +135,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               user.displayName?.isNotEmpty == true
                                   ? user.displayName![0].toUpperCase()
                                   : 'U',
-                              style: AppTextStyles.titleMedium.copyWith(color: Colors.white),
+                              style: AppTextStyles.titleMedium.copyWith(
+                                color: Colors.white,
+                              ),
                             ),
                           );
                         },
@@ -111,7 +148,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         user?.displayName?.isNotEmpty == true
                             ? user!.displayName[0].toUpperCase()
                             : 'U',
-                        style: AppTextStyles.titleMedium.copyWith(color: Colors.white),
+                        style: AppTextStyles.titleMedium.copyWith(
+                          color: Colors.white,
+                        ),
                       ),
                     ),
             ),
@@ -121,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(bool isAdmin) {
     return SafeArea(
       child: Container(
         margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -141,13 +180,20 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildNavItem(0, Icons.home_rounded, 'Beranda'),
-              _buildNavItem(1, Icons.inventory_2_outlined, 'Produk'),
-              _buildCenterNavItem(2, Icons.receipt_long_outlined),
-              _buildNavItem(3, Icons.bar_chart_rounded, 'Laporan'),
-              _buildNavItem(4, Icons.person_outline_rounded, 'Profil'),
-            ],
+            children: isAdmin
+                ? [
+                    _buildNavItem(0, Icons.home_rounded, 'Beranda'),
+                    _buildNavItem(1, Icons.inventory_2_outlined, 'Produk'),
+                    _buildCenterNavItem(2, Icons.people_alt_outlined),
+                    _buildNavItem(3, Icons.bar_chart_rounded, 'Laporan'),
+                    _buildNavItem(4, Icons.settings_outlined, 'Setting'),
+                  ]
+                : [
+                    _buildNavItem(0, Icons.home_rounded, 'Beranda'),
+                    _buildNavItem(1, Icons.inventory_2_outlined, 'Produk'),
+                    _buildCenterNavItem(2, Icons.receipt_long_outlined),
+                    _buildNavItem(3, Icons.person_outline_rounded, 'Profil'),
+                  ],
           ),
         ),
       ),
@@ -167,7 +213,10 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: BoxDecoration(
             color: AppColors.primary,
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.background, width: 6), // Creates a "cutout" effect against the background
+            border: Border.all(
+              color: AppColors.background,
+              width: 6,
+            ), // Creates a "cutout" effect against the background
             boxShadow: [
               BoxShadow(
                 color: AppColors.primary.withValues(alpha: 0.4),
@@ -312,17 +361,19 @@ class _HomeScreenState extends State<HomeScreen> {
 // Widget body dashboard yang terpisah agar rapi
 class _DashboardBody extends StatelessWidget {
   final dynamic user;
+  final bool isAdmin;
   final Function(int) onTabChange;
 
   const _DashboardBody({
     this.user,
+    required this.isAdmin,
     required this.onTabChange,
   });
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 130),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 180),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -330,25 +381,53 @@ class _DashboardBody extends StatelessWidget {
           _buildGreeting(),
           const SizedBox(height: 16),
 
-          // Alert stok menipis
-          _buildStockAlert(),
-          const SizedBox(height: 20),
+          if (isAdmin) ...[
+            // Alert stok menipis (Admin Only)
+            _buildStockAlert(),
+            const SizedBox(height: 20),
 
-          // Pendapatan hari ini
-          _buildRevenueCard(),
-          const SizedBox(height: 16),
+            // Pendapatan hari ini (Admin Only)
+            _buildRevenueCard(),
+            const SizedBox(height: 16),
 
-          // Stats Row
-          _buildStatsRow(),
-          const SizedBox(height: 24),
+            // Stats Row (Admin Only)
+            _buildStatsRow(),
+            const SizedBox(height: 24),
+
+            // Tren Penjualan (Admin Only)
+            _buildSalesTrend(),
+            const SizedBox(height: 20),
+          ] else ...[
+            // Cashier Greeting / Summary
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Siap melayani pelanggan?',
+                    style: AppTextStyles.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Pastikan stok produk dicek secara berkala untuk kelancaran transaksi.',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
 
           // Aksi Cepat
           _buildQuickActions(),
-          const SizedBox(height: 24),
-
-          // Tren Penjualan
-          _buildSalesTrend(),
-          const SizedBox(height: 20),
         ],
       ),
     );
@@ -356,18 +435,40 @@ class _DashboardBody extends StatelessWidget {
 
   Widget _buildGreeting() {
     final firstName = user?.displayName?.split(' ').first ?? 'User';
+    final roleName = isAdmin ? 'Administrator' : 'Kasir';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Halo, $firstName',
-          style: AppTextStyles.displaySmall.copyWith(
-            color: AppColors.textPrimary,
-          ),
+        Row(
+          children: [
+            Text(
+              'Halo, $firstName',
+              style: AppTextStyles.displaySmall.copyWith(
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: isAdmin
+                    ? AppColors.primaryContainer
+                    : AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                roleName,
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: isAdmin ? AppColors.primary : AppColors.textSecondary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 4),
         Text(
-          'Ringkasan hari ini',
+          isAdmin ? 'Ringkasan toko hari ini' : 'Selamat bekerja!',
           style: AppTextStyles.bodyMedium.copyWith(
             color: AppColors.textTertiary,
           ),
@@ -575,29 +676,53 @@ class _DashboardBody extends StatelessWidget {
         Text('Aksi Cepat', style: AppTextStyles.headlineSmall),
         const SizedBox(height: 14),
         Row(
-          children: [
-            _buildActionButton(
-              'Transaksi',
-              Icons.receipt_long_outlined,
-              AppColors.primary,
-              index: 2,
-              isPrimary: true,
-            ),
-            const SizedBox(width: 10),
-            _buildActionButton(
-              'Stok\nProduk',
-              Icons.inventory_2_outlined,
-              AppColors.textSecondary,
-              index: 1,
-            ),
-            const SizedBox(width: 10),
-            _buildActionButton(
-              'Laporan',
-              Icons.bar_chart_rounded,
-              AppColors.textSecondary,
-              index: 3,
-            ),
-          ],
+          children: isAdmin
+              ? [
+                  _buildActionButton(
+                    'Kelola\nProduk',
+                    Icons.inventory_2_outlined,
+                    AppColors.textSecondary,
+                    index: 1,
+                  ),
+                  const SizedBox(width: 10),
+                  _buildActionButton(
+                    'Kelola\nUser',
+                    Icons.people_alt_outlined,
+                    AppColors.primary,
+                    index: 2,
+                    isPrimary: true,
+                  ),
+                  const SizedBox(width: 10),
+                  _buildActionButton(
+                    'Laporan',
+                    Icons.bar_chart_rounded,
+                    AppColors.textSecondary,
+                    index: 3,
+                  ),
+                ]
+              : [
+                  _buildActionButton(
+                    'Mulai\nTransaksi',
+                    Icons.receipt_long_outlined,
+                    AppColors.primary,
+                    index: 2,
+                    isPrimary: true,
+                  ),
+                  const SizedBox(width: 10),
+                  _buildActionButton(
+                    'Lihat\nProduk',
+                    Icons.inventory_2_outlined,
+                    AppColors.textSecondary,
+                    index: 1,
+                  ),
+                  const SizedBox(width: 10),
+                  _buildActionButton(
+                    'Lihat\nProfil',
+                    Icons.person_outline_rounded,
+                    AppColors.textSecondary,
+                    index: 3,
+                  ),
+                ],
         ),
       ],
     );
@@ -744,4 +869,40 @@ class _ChartData {
   final String label;
   final double value;
   const _ChartData(this.label, this.value);
+}
+
+class _PlaceholderBody extends StatelessWidget {
+  final String title;
+  const _PlaceholderBody({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.construction_rounded,
+            size: 72,
+            color: AppColors.textTertiary.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Halaman $title',
+            style: AppTextStyles.headlineSmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Halaman ini sedang dalam tahap pengembangan.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textTertiary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

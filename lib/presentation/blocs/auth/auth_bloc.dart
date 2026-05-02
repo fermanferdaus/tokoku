@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logger/logger.dart';
+import 'package:tokoku/domain/repositories/settings_repository.dart';
 
 import '../../../core/errors/failures.dart';
 import '../../../domain/entities/user_entity.dart';
@@ -12,16 +13,19 @@ import 'auth_state.dart';
 /// BLoC untuk mengelola state autentikasi aplikasi.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
+  final SettingsRepository _settingsRepository;
   final _logger = Logger(printer: PrettyPrinter(methodCount: 0));
 
   StreamSubscription<UserEntity>? _authSubscription;
   bool _isRegistering = false;
 
-  AuthBloc({required AuthRepository authRepository})
-      : _authRepository = authRepository,
+  AuthBloc({
+    required AuthRepository authRepository,
+    required SettingsRepository settingsRepository,
+  })  : _authRepository = authRepository,
+        _settingsRepository = settingsRepository,
         super(const AuthInitial()) {
     on<AuthCheckRequested>(_onCheckRequested);
-    on<AuthGoogleSignInRequested>(_onGoogleSignInRequested);
     on<AuthEmailSignInRequested>(_onEmailSignInRequested);
     on<AuthEmailSignUpRequested>(_onEmailSignUpRequested);
     on<AuthSignOutRequested>(_onSignOutRequested);
@@ -52,37 +56,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       },
     );
 
-    // Check current user state secara langsung
+    // Check current user state secara langsung dan pastikan data lengkap (termasuk role)
     final currentUser = _authRepository.currentUser;
     if (currentUser.isNotEmpty) {
-      emit(AuthAuthenticated(currentUser));
-    } else {
-      emit(const AuthUnauthenticated());
-    }
-  }
-
-  /// Proses Google Sign-In.
-  Future<void> _onGoogleSignInRequested(
-    AuthGoogleSignInRequested event,
-    Emitter<AuthState> emit,
-  ) async {
-    emit(const AuthLoading());
-    try {
-      final user = await _authRepository.signInWithGoogle();
-      emit(AuthAuthenticated(user));
-      _logger.i('Login berhasil: ${user.displayName}');
-    } on AuthFailure catch (e) {
-      _logger.w('Login gagal: ${e.message}');
-      // Jika user cancel, kembali ke unauthenticated tanpa error
-      if (e.message.contains('dibatalkan')) {
-        emit(const AuthUnauthenticated());
-      } else {
-        emit(AuthError(e.message));
-        emit(const AuthUnauthenticated());
+      try {
+        // Ambil data terbaru dari firestore untuk memastikan role terupdate
+        final users = await _authRepository.getUsers();
+        final fullUser = users.firstWhere(
+          (u) => u.uid == currentUser.uid,
+          orElse: () => currentUser,
+        );
+        emit(AuthAuthenticated(fullUser));
+      } catch (e) {
+        // Jika gagal ambil data lengkap, gunakan yang ada saja tapi hati-hati dengan role
+        emit(AuthAuthenticated(currentUser));
       }
-    } catch (e) {
-      _logger.e('Unexpected login error', error: e);
-      emit(const AuthError('Terjadi kesalahan saat login'));
+    } else {
       emit(const AuthUnauthenticated());
     }
   }
@@ -94,7 +83,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
     try {
-      final user = await _authRepository.signInWithEmail(event.email, event.password);
+      final user =
+          await _authRepository.signInWithEmail(event.email, event.password);
       emit(AuthAuthenticated(user));
     } on AuthFailure catch (e) {
       emit(AuthError(e.message));
@@ -110,10 +100,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthLoading());
     _isRegistering = true; // Set flag pendaftaran
     try {
+      // 1. Validasi Kode Akses Admin secara Dinamis
+      final currentCode = await _settingsRepository.getAdminAccessCode();
+      if (event.accessCode != currentCode) {
+        _isRegistering = false;
+        emit(const AuthError('Kode Akses Admin salah. Silakan hubungi pemilik toko.'));
+        emit(const AuthUnauthenticated());
+        return;
+      }
+
+      // 2. Jika kode benar, lanjut pendaftaran
       await _authRepository.signUpWithEmail(
         name: event.name,
         email: event.email,
         password: event.password,
+        role: event.role,
       );
       
       // Paksa sign out agar tidak langsung masuk dashboard
@@ -125,6 +126,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } on AuthFailure catch (e) {
       _isRegistering = false;
       emit(AuthError(e.message));
+      emit(const AuthUnauthenticated());
+    } catch (e) {
+      _isRegistering = false;
+      emit(const AuthError('Gagal memproses pendaftaran.'));
       emit(const AuthUnauthenticated());
     }
   }

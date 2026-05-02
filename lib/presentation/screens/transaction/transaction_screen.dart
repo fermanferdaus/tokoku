@@ -262,7 +262,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
               }
 
               if (products.isEmpty) {
-                return const Center(child: Text('No products found'));
+                return _buildEmptyState();
               }
 
               // Dynamic bottom padding:
@@ -286,6 +286,36 @@ class _TransactionScreenState extends State<TransactionScreen> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 72,
+            color: AppColors.textTertiary.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Produk Tidak Ditemukan',
+            style: AppTextStyles.headlineSmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Coba cari dengan kata kunci lain\natau periksa filter yang Anda gunakan.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textTertiary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -12,6 +12,8 @@ class AppConstants {
   static const String categoriesCollection = 'categories';
   static const String transactionsCollection = 'transactions';
   static const String customersCollection = 'customers';
+  static const String settingsCollection = 'settings';
+  static const String adminAccessCodeDoc = 'admin_access_code';
 
   // Firebase Storage Paths
   static const String productImagesPath = 'products';

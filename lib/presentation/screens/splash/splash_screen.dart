@@ -1,7 +1,5 @@
-import 'package:tokoku/presentation/blocs/auth/auth_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import '../../widgets/common/app_logo.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -44,18 +42,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Trigger pengecekan status login
     context.read<AuthBloc>().add(const AuthCheckRequested());
-
-    // Tunggu 2 detik (animasi) lalu pindah halaman secara manual
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        final state = context.read<AuthBloc>().state;
-        if (state is AuthAuthenticated) {
-          context.go('/home');
-        } else {
-          context.go('/login');
-        }
-      }
-    });
   }
 
   @override

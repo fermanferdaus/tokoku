@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:tokoku/presentation/blocs/user/user_bloc.dart';
 
 import 'config/routes/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -20,6 +21,7 @@ class App extends StatelessWidget {
         BlocProvider(create: (_) => sl<AuthBloc>()..add(const AuthCheckRequested())),
         BlocProvider(create: (_) => sl<ProductBloc>()),
         BlocProvider(create: (_) => sl<CartBloc>()),
+        BlocProvider.value(value: sl<UserBloc>()),
       ],
       child: const _AppView(),
     );
