@@ -7,6 +7,7 @@ import 'injection_container.dart';
 import 'presentation/blocs/auth/auth_bloc.dart';
 import 'presentation/blocs/auth/auth_event.dart';
 import 'presentation/blocs/product/product_bloc.dart';
+import 'presentation/blocs/cart/cart_bloc.dart';
 
 /// Root widget aplikasi Tokoku.
 class App extends StatelessWidget {
@@ -18,6 +19,7 @@ class App extends StatelessWidget {
       providers: [
         BlocProvider(create: (_) => sl<AuthBloc>()..add(const AuthCheckRequested())),
         BlocProvider(create: (_) => sl<ProductBloc>()),
+        BlocProvider(create: (_) => sl<CartBloc>()),
       ],
       child: const _AppView(),
     );

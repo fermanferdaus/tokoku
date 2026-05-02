@@ -691,18 +691,16 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       return const LinearProgressIndicator();
     }
 
-    final categoryNames = _categories.map((c) => c.name).toList();
-
     return Row(
       children: [
         Expanded(
           child: DropdownButtonFormField<String>(
-            initialValue: categoryNames.contains(_selectedCategory)
-                ? _selectedCategory
+            value: _categories.any((c) => c.id == _selectedCategory || c.name == _selectedCategory)
+                ? _categories.firstWhere((c) => c.id == _selectedCategory || c.name == _selectedCategory).id
                 : null,
             decoration: const InputDecoration(hintText: 'Pilih Kategori'),
-            items: categoryNames
-                .map((name) => DropdownMenuItem(value: name, child: Text(name)))
+            items: _categories
+                .map((cat) => DropdownMenuItem(value: cat.id, child: Text(cat.name)))
                 .toList(),
             onChanged: (v) => setState(() => _selectedCategory = v),
             validator: (v) =>

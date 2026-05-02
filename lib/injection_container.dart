@@ -11,6 +11,7 @@ import 'domain/repositories/category_repository.dart';
 import 'domain/repositories/product_repository.dart';
 import 'presentation/blocs/auth/auth_bloc.dart';
 import 'presentation/blocs/product/product_bloc.dart';
+import 'presentation/blocs/cart/cart_bloc.dart';
 
 /// Service Locator — registrasi semua dependency menggunakan GetIt.
 final sl = GetIt.instance;
@@ -45,5 +46,8 @@ Future<void> initDependencies() async {
   );
   sl.registerFactory<ProductBloc>(
     () => ProductBloc(productRepository: sl<ProductRepository>()),
+  );
+  sl.registerFactory<CartBloc>(
+    () => CartBloc(productRepository: sl<ProductRepository>()),
   );
 }

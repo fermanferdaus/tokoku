@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tokoku/presentation/blocs/cart/cart_state.dart';
 
 import '../../domain/repositories/product_repository.dart';
 import '../../injection_container.dart';
@@ -9,6 +10,9 @@ import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/auth/register_screen.dart';
 import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/product/product_form_screen.dart';
+import '../../presentation/screens/transaction/transaction_screen.dart';
+import '../../presentation/screens/transaction/cart_screen.dart';
+import '../../presentation/screens/transaction/invoice_screen.dart';
 import '../../presentation/screens/splash/splash_screen.dart';
 
 /// Konfigurasi routing menggunakan GoRouter.
@@ -21,6 +25,9 @@ class AppRouter {
   static const String home = '/home';
   static const String productAdd = '/product/add';
   static const String productEdit = '/product/edit/:id';
+  static const String transaction = '/transaction';
+  static const String cart = '/transaction/cart';
+  static const String invoice = '/transaction/invoice';
 
   static GoRouter router(AuthBloc authBloc) {
     return GoRouter(
@@ -79,7 +86,12 @@ class AppRouter {
         GoRoute(
           path: home,
           name: 'home',
-          builder: (context, state) => const HomeScreen(),
+          builder: (context, state) {
+            final tab = state.uri.queryParameters['tab'];
+            int initialIndex = 0;
+            if (tab == 'transaction') initialIndex = 2;
+            return HomeScreen(initialIndex: initialIndex);
+          },
         ),
         GoRoute(
           path: productAdd,
@@ -108,6 +120,34 @@ class AppRouter {
                 }
                 return ProductFormScreen(product: snapshot.data!);
               },
+            );
+          },
+        ),
+        GoRoute(
+          path: transaction,
+          name: 'transaction',
+          builder: (context, state) => const TransactionScreen(),
+        ),
+        GoRoute(
+          path: cart,
+          name: 'cart',
+          builder: (context, state) => const CartScreen(),
+        ),
+        GoRoute(
+          path: invoice,
+          name: 'invoice',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>;
+            final cartState = extra['cartState'] as CartState;
+            final cash = extra['cash'] as double;
+            final change = extra['change'] as double;
+            final invoiceNo = extra['invoiceNo'] as String;
+
+            return InvoiceScreen(
+              cartState: cartState,
+              cash: cash,
+              change: change,
+              invoiceNo: invoiceNo,
             );
           },
         ),

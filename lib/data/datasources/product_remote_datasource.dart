@@ -75,6 +75,53 @@ class ProductRemoteDatasource {
     }
   }
 
+  /// Memproses transaksi: update stok produk secara massal dan simpan data transaksi.
+  Future<void> processTransaction({
+    required String ownerId,
+    required String invoiceNo,
+    required List<Map<String, dynamic>> items,
+    required double subtotal,
+    required double total,
+    required double cash,
+    required double change,
+  }) async {
+    try {
+      final batch = _firestore.batch();
+      
+      // 1. Update stok untuk setiap produk
+      for (final item in items) {
+        final productId = item['productId'] as String;
+        final quantity = item['quantity'] as int;
+        
+        final docRef = _productsRef.doc(productId);
+        batch.update(docRef, {
+          'stock': FieldValue.increment(-quantity),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      
+      // 2. Simpan data transaksi ke koleksi 'transactions'
+      final transactionRef = _firestore.collection(AppConstants.transactionsCollection).doc();
+      batch.set(transactionRef, {
+        'id': transactionRef.id,
+        'ownerId': ownerId,
+        'invoiceNo': invoiceNo,
+        'items': items,
+        'subtotal': subtotal,
+        'total': total,
+        'cash': cash,
+        'change': change,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      
+      await batch.commit();
+      _logger.i('Transaksi $invoiceNo berhasil diproses');
+    } catch (e, stackTrace) {
+      _logger.e('Error memproses transaksi', error: e, stackTrace: stackTrace);
+      throw const ServerException('Gagal memproses transaksi ke database');
+    }
+  }
+
   /// Hard delete produk dari Firestore.
   Future<void> deleteProduct(String id) async {
     try {

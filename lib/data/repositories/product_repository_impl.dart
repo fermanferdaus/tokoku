@@ -97,4 +97,28 @@ class ProductRepositoryImpl implements ProductRepository {
       throw ServerFailure(e.message);
     }
   }
+
+  @override
+  Future<void> createTransaction({
+    required String invoiceNo,
+    required List<Map<String, dynamic>> items,
+    required double subtotal,
+    required double total,
+    required double cash,
+    required double change,
+  }) async {
+    try {
+      await _remoteDatasource.processTransaction(
+        ownerId: _currentUserId,
+        invoiceNo: invoiceNo,
+        items: items,
+        subtotal: subtotal,
+        total: total,
+        cash: cash,
+        change: change,
+      );
+    } on ServerException catch (e) {
+      throw ServerFailure(e.message);
+    }
+  }
 }

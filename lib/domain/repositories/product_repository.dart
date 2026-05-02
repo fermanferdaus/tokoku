@@ -27,4 +27,14 @@ abstract class ProductRepository {
 
   /// Hapus gambar produk dari storage.
   Future<void> deleteProductImage(String imageUrl);
+
+  /// Memproses transaksi: potong stok dan simpan data order.
+  Future<void> createTransaction({
+    required String invoiceNo,
+    required List<Map<String, dynamic>> items,
+    required double subtotal,
+    required double total,
+    required double cash,
+    required double change,
+  });
 }

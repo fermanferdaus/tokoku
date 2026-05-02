@@ -3,11 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
 
 import 'app.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'config/firebase/firebase_config.dart';
 import 'injection_container.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inisialisasi locale data untuk formatting tanggal
+  await initializeDateFormatting('id_ID', null);
 
   // Lock orientasi ke portrait
   await SystemChrome.setPreferredOrientations([

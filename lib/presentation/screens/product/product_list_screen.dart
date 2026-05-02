@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:flutter/services.dart';
@@ -196,7 +197,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
     var filtered = products.where((p) {
       // Category
       if (_selectedCategory != null && _selectedCategory!.isNotEmpty) {
-        if (p.category != _selectedCategory) {
+        final selectedCat = _categories.firstWhere(
+          (c) => c.id == _selectedCategory,
+          orElse: () =>
+              CategoryEntity(id: '', name: _selectedCategory!, ownerId: ''),
+        );
+
+        if (p.category != selectedCat.id && p.category != selectedCat.name) {
           return false;
         }
       }
@@ -253,14 +260,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
             onRefresh: () async {
               context.read<ProductBloc>().add(const ProductLoadRequested());
             },
-            child: GridView.builder(
+            child: MasonryGridView.count(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 130),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 0.75,
-              ),
+              crossAxisCount: 2,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
               itemCount: filteredProducts.length,
               itemBuilder: (context, index) {
                 return _buildProductItem(filteredProducts[index]);
@@ -347,40 +351,41 @@ class _ProductListScreenState extends State<ProductListScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Bagian Gambar
-          Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (product.imageUrl != null && product.imageUrl!.isNotEmpty)
-                  CachedNetworkImage(
-                    imageUrl: product.imageUrl!,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: AppColors.surfaceVariant,
-                      child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
+          Stack(
+            children: [
+              Container(
+                height: 150, // Fixed height for image area to keep it consistent but allow card to expand
+                width: double.infinity,
+                child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: product.imageUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: AppColors.surfaceVariant,
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: AppColors.surfaceVariant,
+                          child: const Icon(
+                            Icons.broken_image_outlined,
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        color: AppColors.surfaceVariant,
+                        child: const Icon(
+                          Icons.inventory_2_outlined,
+                          color: AppColors.textTertiary,
+                          size: 32,
+                        ),
                       ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: AppColors.surfaceVariant,
-                      child: const Icon(
-                        Icons.broken_image_outlined,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  )
-                else
-                  Container(
-                    color: AppColors.surfaceVariant,
-                    child: const Icon(
-                      Icons.inventory_2_outlined,
-                      color: AppColors.textTertiary,
-                      size: 32,
-                    ),
-                  ),
-
-                if (isArchived)
-                  Container(
+              ),
+              if (isArchived)
+                Positioned.fill(
+                  child: Container(
                     color: Colors.black.withValues(alpha: 0.5),
                     alignment: Alignment.center,
                     child: Container(
@@ -401,8 +406,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
 
           // Bagian Detail
@@ -417,9 +422,19 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (product.sku != null && product.sku!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'SKU: ${product.sku}',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.textTertiary,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 2),
                 Text(
                   Formatters.currency(product.price),

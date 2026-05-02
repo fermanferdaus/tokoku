@@ -7,16 +7,24 @@ import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
 import '../product/product_list_screen.dart';
+import '../transaction/transaction_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialIndex;
+  const HomeScreen({super.key, this.initialIndex = 0});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 0;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +46,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBody(dynamic user) {
     switch (_currentIndex) {
       case 0:
-        return _DashboardBody(user: user);
+        return _DashboardBody(
+          user: user,
+          onTabChange: (index) => setState(() => _currentIndex = index),
+        );
       case 1:
         return const ProductListScreen();
+      case 2:
+        return const TransactionScreen();
       default:
         return Center(
           child: Text(
@@ -299,7 +312,12 @@ class _HomeScreenState extends State<HomeScreen> {
 // Widget body dashboard yang terpisah agar rapi
 class _DashboardBody extends StatelessWidget {
   final dynamic user;
-  const _DashboardBody({this.user});
+  final Function(int) onTabChange;
+
+  const _DashboardBody({
+    this.user,
+    required this.onTabChange,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -562,6 +580,7 @@ class _DashboardBody extends StatelessWidget {
               'Transaksi',
               Icons.receipt_long_outlined,
               AppColors.primary,
+              index: 2,
               isPrimary: true,
             ),
             const SizedBox(width: 10),
@@ -569,12 +588,14 @@ class _DashboardBody extends StatelessWidget {
               'Stok\nProduk',
               Icons.inventory_2_outlined,
               AppColors.textSecondary,
+              index: 1,
             ),
             const SizedBox(width: 10),
             _buildActionButton(
               'Laporan',
               Icons.bar_chart_rounded,
               AppColors.textSecondary,
+              index: 3,
             ),
           ],
         ),
@@ -586,11 +607,12 @@ class _DashboardBody extends StatelessWidget {
     String label,
     IconData icon,
     Color color, {
+    required int index,
     bool isPrimary = false,
   }) {
     return Expanded(
       child: GestureDetector(
-        onTap: () {},
+        onTap: () => onTabChange(index),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 18),
           decoration: BoxDecoration(
