@@ -22,7 +22,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
   @override
   Future<List<CategoryEntity>> getCategories() async {
     try {
-      final models = await _remoteDatasource.getCategories(_currentUserId);
+      final models = await _remoteDatasource.getCategories();
       return models.cast<CategoryEntity>();
     } on ServerException catch (e) {
       throw ServerFailure(e.message);

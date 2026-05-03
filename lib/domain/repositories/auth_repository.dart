@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../entities/user_entity.dart';
 
 /// Kontrak repository untuk operasi autentikasi.
@@ -30,4 +32,7 @@ abstract class AuthRepository {
 
   /// Update data user.
   Future<void> updateUser(UserEntity user, {String? password});
+
+  /// Upload foto profil user dan kembalikan URL-nya.
+  Future<String> uploadUserAvatar(File imageFile);
 }

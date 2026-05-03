@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:tokoku/data/models/user_model.dart';
 
 import '../../core/errors/exceptions.dart';
@@ -99,6 +100,15 @@ class AuthRepositoryImpl implements AuthRepository {
         ),
         password: password,
       );
+    } on AuthException catch (e) {
+      throw AuthFailure(e.message);
+    }
+  }
+
+  @override
+  Future<String> uploadUserAvatar(File imageFile) async {
+    try {
+      return await _remoteDatasource.uploadUserAvatar(imageFile);
     } on AuthException catch (e) {
       throw AuthFailure(e.message);
     }

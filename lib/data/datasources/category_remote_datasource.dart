@@ -17,10 +17,9 @@ class CategoryRemoteDatasource {
       _firestore.collection(AppConstants.categoriesCollection);
 
   /// Ambil semua kategori milik user tertentu.
-  Future<List<CategoryModel>> getCategories(String ownerId) async {
+  Future<List<CategoryModel>> getCategories() async {
     try {
       final snapshot = await _categoriesRef
-          .where('ownerId', isEqualTo: ownerId)
           .orderBy('name')
           .get();
 

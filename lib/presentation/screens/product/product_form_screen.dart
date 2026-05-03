@@ -15,8 +15,6 @@ import '../../../domain/entities/category_entity.dart';
 import '../../../domain/entities/product_entity.dart';
 import '../../../domain/repositories/category_repository.dart';
 import '../../../injection_container.dart';
-import '../../blocs/auth/auth_bloc.dart';
-import '../../blocs/auth/auth_state.dart';
 import '../../blocs/product/product_bloc.dart';
 import '../../blocs/product/product_event.dart';
 import '../../blocs/product/product_state.dart';
@@ -65,7 +63,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       _buyPriceController.text = p.buyPrice > 0
           ? Formatters.number(p.buyPrice.toInt())
           : '';
-      _sellPriceController.text = p.price > 0 ? Formatters.number(p.price.toInt()) : '';
+      _sellPriceController.text = p.price > 0
+          ? Formatters.number(p.price.toInt())
+          : '';
       _stockController.text = p.stock.toString();
       _selectedCategory = p.category;
       _existingImageUrl = p.imageUrl;
@@ -170,17 +170,22 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   void _onSubmit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final authState = context.read<AuthBloc>().state;
-    final ownerId = authState is AuthAuthenticated ? authState.user.uid : '';
-
     final product = ProductEntity(
       id: widget.product?.id ?? '',
       name: _nameController.text.trim(),
       description: _descriptionController.text.trim().isEmpty
           ? null
           : _descriptionController.text.trim(),
-      price: double.tryParse(_sellPriceController.text.replaceAll(RegExp(r'[^\d]'), '')) ?? 0,
-      buyPrice: double.tryParse(_buyPriceController.text.replaceAll(RegExp(r'[^\d]'), '')) ?? 0,
+      price:
+          double.tryParse(
+            _sellPriceController.text.replaceAll(RegExp(r'[^\d]'), ''),
+          ) ??
+          0,
+      buyPrice:
+          double.tryParse(
+            _buyPriceController.text.replaceAll(RegExp(r'[^\d]'), ''),
+          ) ??
+          0,
       stock: int.tryParse(_stockController.text) ?? 0,
       minStock: 0,
       sku: _skuController.text.trim().isEmpty
@@ -188,7 +193,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           : _skuController.text.trim(),
       category: _selectedCategory,
       imageUrl: _existingImageUrl ?? '',
-      ownerId: ownerId,
+      ownerId:
+          '', // Data global, ownerId dikosongkan agar tersinkron ke semua user
       isActive: _isActive,
       createdAt: widget.isEditing ? widget.product!.createdAt : DateTime.now(),
     );
@@ -405,7 +411,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                         decoration: const InputDecoration(
                                           prefixText: 'Rp ',
                                         ),
-                                        validator: (v) => Validators.validateRequired(v, 'Harga Beli'),
+                                        validator: (v) =>
+                                            Validators.validateRequired(
+                                              v,
+                                              'Harga Beli',
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -695,12 +705,25 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       children: [
         Expanded(
           child: DropdownButtonFormField<String>(
-            value: _categories.any((c) => c.id == _selectedCategory || c.name == _selectedCategory)
-                ? _categories.firstWhere((c) => c.id == _selectedCategory || c.name == _selectedCategory).id
+            value:
+                _categories.any(
+                  (c) =>
+                      c.id == _selectedCategory || c.name == _selectedCategory,
+                )
+                ? _categories
+                      .firstWhere(
+                        (c) =>
+                            c.id == _selectedCategory ||
+                            c.name == _selectedCategory,
+                      )
+                      .id
                 : null,
             decoration: const InputDecoration(hintText: 'Pilih Kategori'),
             items: _categories
-                .map((cat) => DropdownMenuItem(value: cat.id, child: Text(cat.name)))
+                .map(
+                  (cat) =>
+                      DropdownMenuItem(value: cat.id, child: Text(cat.name)),
+                )
                 .toList(),
             onChanged: (v) => setState(() => _selectedCategory = v),
             validator: (v) =>
@@ -773,7 +796,10 @@ class _ManageCategoriesModalState extends State<_ManageCategoriesModal> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal menambah kategori'), backgroundColor: AppColors.error),
+          const SnackBar(
+            content: Text('Gagal menambah kategori'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -805,7 +831,10 @@ class _ManageCategoriesModalState extends State<_ManageCategoriesModal> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal mengupdate kategori'), backgroundColor: AppColors.error),
+          const SnackBar(
+            content: Text('Gagal mengupdate kategori'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -824,7 +853,10 @@ class _ManageCategoriesModalState extends State<_ManageCategoriesModal> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal menghapus kategori'), backgroundColor: AppColors.error),
+          const SnackBar(
+            content: Text('Gagal menghapus kategori'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -835,7 +867,9 @@ class _ManageCategoriesModalState extends State<_ManageCategoriesModal> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.7,
+      ),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -857,17 +891,25 @@ class _ManageCategoriesModalState extends State<_ManageCategoriesModal> {
             ),
           ),
           const Divider(height: 1),
-          
+
           if (_isLoading) const LinearProgressIndicator(),
 
           // List Kategori
           Expanded(
             child: _categories.isEmpty
                 ? Center(
-                    child: Text('Belum ada kategori', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textTertiary)),
+                    child: Text(
+                      'Belum ada kategori',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
                   )
                 : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
                     itemCount: _categories.length,
                     separatorBuilder: (_, index) => const Divider(height: 1),
                     itemBuilder: (context, index) {
@@ -885,17 +927,27 @@ class _ManageCategoriesModalState extends State<_ManageCategoriesModal> {
                                   autofocus: true,
                                   decoration: const InputDecoration(
                                     isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 12,
+                                    ),
                                   ),
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.check_circle_rounded, color: AppColors.success),
+                                icon: const Icon(
+                                  Icons.check_circle_rounded,
+                                  color: AppColors.success,
+                                ),
                                 onPressed: () => _updateCategory(category),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.cancel_rounded, color: AppColors.textTertiary),
-                                onPressed: () => setState(() => _editingCategoryId = null),
+                                icon: const Icon(
+                                  Icons.cancel_rounded,
+                                  color: AppColors.textTertiary,
+                                ),
+                                onPressed: () =>
+                                    setState(() => _editingCategoryId = null),
                               ),
                             ],
                           ),
@@ -904,12 +956,19 @@ class _ManageCategoriesModalState extends State<_ManageCategoriesModal> {
 
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: Text(category.name, style: AppTextStyles.titleMedium),
+                        title: Text(
+                          category.name,
+                          style: AppTextStyles.titleMedium,
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.edit_outlined, color: AppColors.primary, size: 20),
+                              icon: const Icon(
+                                Icons.edit_outlined,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
                               onPressed: () {
                                 setState(() {
                                   _editingCategoryId = category.id;
@@ -918,21 +977,35 @@ class _ManageCategoriesModalState extends State<_ManageCategoriesModal> {
                               },
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                color: AppColors.error,
+                                size: 20,
+                              ),
                               onPressed: () {
                                 showDialog(
                                   context: context,
                                   builder: (ctx) => AlertDialog(
                                     title: const Text('Hapus Kategori?'),
-                                    content: const Text('Kategori akan dihapus selamanya.'),
+                                    content: const Text(
+                                      'Kategori akan dihapus selamanya.',
+                                    ),
                                     actions: [
-                                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text('Batal'),
+                                      ),
                                       TextButton(
                                         onPressed: () {
                                           Navigator.pop(ctx);
                                           _deleteCategory(category);
                                         },
-                                        child: const Text('Hapus', style: TextStyle(color: AppColors.error)),
+                                        child: const Text(
+                                          'Hapus',
+                                          style: TextStyle(
+                                            color: AppColors.error,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -975,7 +1048,10 @@ class _ManageCategoriesModalState extends State<_ManageCategoriesModal> {
                 ElevatedButton(
                   onPressed: _isLoading ? null : _addCategory,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
                   ),
                   child: const Icon(Icons.add_rounded, color: Colors.white),
                 ),

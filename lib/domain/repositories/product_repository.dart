@@ -37,4 +37,13 @@ abstract class ProductRepository {
     required double cash,
     required double change,
   });
+
+  /// Mengambil statistik dashboard.
+  Future<Map<String, dynamic>> getDashboardStats();
+
+  /// Mengambil riwayat transaksi dengan filter tanggal.
+  Future<List<Map<String, dynamic>>> getTransactions({
+    DateTime? startDate,
+    DateTime? endDate,
+  });
 }

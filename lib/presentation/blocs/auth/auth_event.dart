@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:tokoku/domain/entities/user_entity.dart';
 
 /// Events untuk AuthBloc.
 abstract class AuthEvent extends Equatable {
@@ -47,4 +48,13 @@ class AuthEmailSignUpRequested extends AuthEvent {
 /// User menekan tombol logout.
 class AuthSignOutRequested extends AuthEvent {
   const AuthSignOutRequested();
+}
+
+/// User memperbarui data profil mereka sendiri.
+class AuthUserUpdated extends AuthEvent {
+  final UserEntity user;
+  const AuthUserUpdated(this.user);
+
+  @override
+  List<Object?> get props => [user];
 }

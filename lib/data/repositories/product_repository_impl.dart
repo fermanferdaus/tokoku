@@ -6,25 +6,31 @@ import '../../domain/entities/product_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../datasources/product_remote_datasource.dart';
+import '../datasources/transaction_remote_datasource.dart';
 import '../models/product_model.dart';
 
 /// Implementasi [ProductRepository] yang menghubungkan datasource ke domain.
 class ProductRepositoryImpl implements ProductRepository {
   final ProductRemoteDatasource _remoteDatasource;
+  final TransactionRemoteDatasource _transactionRemoteDatasource;
   final AuthRepository _authRepository;
 
   ProductRepositoryImpl({
     required ProductRemoteDatasource remoteDatasource,
+    required TransactionRemoteDatasource transactionRemoteDatasource,
     required AuthRepository authRepository,
   })  : _remoteDatasource = remoteDatasource,
+        _transactionRemoteDatasource = transactionRemoteDatasource,
         _authRepository = authRepository;
 
   String get _currentUserId => _authRepository.currentUser.uid;
 
+  AuthRepository get authRepository => _authRepository;
+
   @override
   Future<List<ProductEntity>> getProducts() async {
     try {
-      final models = await _remoteDatasource.getProducts(_currentUserId);
+      final models = await _remoteDatasource.getProducts();
       return models.map((m) => m.toEntity()).toList();
     } on ServerException catch (e) {
       throw ServerFailure(e.message);
@@ -73,7 +79,7 @@ class ProductRepositoryImpl implements ProductRepository {
   @override
   Future<List<ProductEntity>> searchProducts(String query) async {
     try {
-      final models = await _remoteDatasource.searchProducts(query, _currentUserId);
+      final models = await _remoteDatasource.searchProducts(query);
       return models.map((m) => m.toEntity()).toList();
     } on ServerException catch (e) {
       throw ServerFailure(e.message);
@@ -116,6 +122,30 @@ class ProductRepositoryImpl implements ProductRepository {
         total: total,
         cash: cash,
         change: change,
+      );
+    } on ServerException catch (e) {
+      throw ServerFailure(e.message);
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getDashboardStats() async {
+    try {
+      return await _remoteDatasource.getDashboardStats();
+    } on ServerException catch (e) {
+      throw ServerFailure(e.message);
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getTransactions({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      return await _transactionRemoteDatasource.getTransactions(
+        startDate: startDate,
+        endDate: endDate,
       );
     } on ServerException catch (e) {
       throw ServerFailure(e.message);

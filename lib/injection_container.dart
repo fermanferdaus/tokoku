@@ -3,6 +3,7 @@ import 'package:get_it/get_it.dart';
 import 'data/datasources/auth_remote_datasource.dart';
 import 'data/datasources/category_remote_datasource.dart';
 import 'data/datasources/product_remote_datasource.dart';
+import 'data/datasources/transaction_remote_datasource.dart';
 import 'data/datasources/settings_remote_datasource.dart';
 import 'data/repositories/auth_repository_impl.dart';
 import 'data/repositories/category_repository_impl.dart';
@@ -16,6 +17,8 @@ import 'presentation/blocs/auth/auth_bloc.dart';
 import 'presentation/blocs/product/product_bloc.dart';
 import 'presentation/blocs/cart/cart_bloc.dart';
 import 'presentation/blocs/user/user_bloc.dart';
+import 'presentation/blocs/dashboard/dashboard_bloc.dart';
+import 'presentation/blocs/history/history_bloc.dart';
 
 /// Service Locator — registrasi semua dependency menggunakan GetIt.
 final sl = GetIt.instance;
@@ -26,6 +29,8 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<AuthRemoteDatasource>(() => AuthRemoteDatasource());
   sl.registerLazySingleton<ProductRemoteDatasource>(
       () => ProductRemoteDatasource());
+  sl.registerLazySingleton<TransactionRemoteDatasource>(
+      () => TransactionRemoteDatasource());
   sl.registerLazySingleton<CategoryRemoteDatasource>(
       () => CategoryRemoteDatasource());
   sl.registerLazySingleton<SettingsRemoteDatasource>(
@@ -42,6 +47,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<ProductRepository>(
     () => ProductRepositoryImpl(
       remoteDatasource: sl<ProductRemoteDatasource>(),
+      transactionRemoteDatasource: sl<TransactionRemoteDatasource>(),
       authRepository: sl<AuthRepository>(),
     ),
   );
@@ -60,12 +66,21 @@ Future<void> initDependencies() async {
     ),
   );
   sl.registerFactory<ProductBloc>(
-    () => ProductBloc(productRepository: sl<ProductRepository>()),
+    () => ProductBloc(
+      productRepository: sl<ProductRepository>(),
+      dashboardBloc: sl<DashboardBloc>(),
+    ),
   );
   sl.registerFactory<CartBloc>(
     () => CartBloc(productRepository: sl<ProductRepository>()),
   );
   sl.registerLazySingleton<UserBloc>(
     () => UserBloc(authRepository: sl<AuthRepository>()),
+  );
+  sl.registerFactory<DashboardBloc>(
+    () => DashboardBloc(productRepository: sl<ProductRepository>()),
+  );
+  sl.registerFactory<HistoryBloc>(
+    () => HistoryBloc(productRepository: sl<ProductRepository>()),
   );
 }

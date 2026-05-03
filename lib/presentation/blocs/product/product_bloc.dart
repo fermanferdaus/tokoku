@@ -7,17 +7,23 @@ export 'product_state.dart';
 import '../../../core/errors/failures.dart';
 import '../../../domain/entities/product_entity.dart';
 import '../../../domain/repositories/product_repository.dart';
+import '../../blocs/dashboard/dashboard_bloc.dart';
+import '../../blocs/dashboard/dashboard_state.dart';
 import 'product_event.dart';
 import 'product_state.dart';
 
 /// BLoC untuk mengelola state produk.
 class ProductBloc extends Bloc<ProductEvent, ProductState> {
   final ProductRepository _productRepository;
+  final DashboardBloc? _dashboardBloc;
   final _logger = Logger(printer: PrettyPrinter(methodCount: 0));
 
-  ProductBloc({required ProductRepository productRepository})
-    : _productRepository = productRepository,
-      super(const ProductInitial()) {
+  ProductBloc({
+    required ProductRepository productRepository,
+    DashboardBloc? dashboardBloc,
+  }) : _productRepository = productRepository,
+       _dashboardBloc = dashboardBloc,
+       super(const ProductInitial()) {
     on<ProductLoadRequested>(_onLoadRequested);
     on<ProductSearchRequested>(_onSearchRequested);
     on<ProductAddRequested>(_onAddRequested);
@@ -89,6 +95,10 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       );
 
       await _productRepository.addProduct(product);
+      
+      // Refresh dashboard if available
+      _dashboardBloc?.add(DashboardFetchRequested());
+      
       emit(const ProductOperationSuccess('Produk berhasil ditambahkan'));
 
       // Reload products
@@ -146,6 +156,10 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       );
 
       await _productRepository.updateProduct(product);
+      
+      // Refresh dashboard if available
+      _dashboardBloc?.add(DashboardFetchRequested());
+      
       emit(const ProductOperationSuccess('Produk berhasil diperbarui'));
 
       final products = await _productRepository.getProducts();
@@ -169,6 +183,13 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       }
 
       await _productRepository.deleteProduct(event.productId);
+      
+      // Refresh dashboard if available
+      _dashboardBloc?.add(DashboardFetchRequested());
+      
+      // Refresh dashboard if available
+      _dashboardBloc?.add(DashboardFetchRequested());
+      
       emit(const ProductOperationSuccess('Produk berhasil dihapus'));
 
       final products = await _productRepository.getProducts();

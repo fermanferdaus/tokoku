@@ -117,7 +117,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             ),
             floatingActionButton: isAdmin
                 ? Padding(
-                    padding: const EdgeInsets.only(bottom: 100),
+                    padding: const EdgeInsets.only(bottom: 120),
                     child: FloatingActionButton(
                       onPressed: () => context.push('/product/add'),
                       backgroundColor: AppColors.primary,
@@ -462,25 +462,46 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      size: 12,
+                      color: product.stock <= 5 ? AppColors.error : AppColors.textTertiary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Stok: ${product.stock}',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: product.stock <= 5 ? AppColors.error : AppColors.textSecondary,
+                        fontWeight: product.stock <= 5 ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
-                BlocBuilder<AuthBloc, AuthState>(
-                  builder: (context, authState) {
+                Builder(
+                  builder: (context) {
+                    final authState = context.read<AuthBloc>().state;
                     final user = authState is AuthAuthenticated
                         ? authState.user
                         : null;
                     final isAdmin = user?.role == 'admin';
 
-                    if (!isAdmin) return const SizedBox(height: 8);
+                    if (!isAdmin) return const SizedBox(height: 4);
 
                     return Column(
                       children: [
+                        const SizedBox(height: 8),
                         const Divider(height: 1, color: AppColors.border),
                         Row(
                           children: [
                             Expanded(
                               child: IconButton(
-                                onPressed: () =>
-                                    context.push('/product/edit/${product.id}'),
+                                onPressed: () => context.push(
+                                  '/product/edit/${product.id}',
+                                ),
                                 icon: const Icon(
                                   Icons.edit_outlined,
                                   color: AppColors.primary,

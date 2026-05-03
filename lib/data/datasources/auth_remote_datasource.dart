@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 import 'package:logger/logger.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -11,13 +13,16 @@ import '../models/user_model.dart';
 class AuthRemoteDatasource {
   final FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage;
   final _logger = Logger(printer: PrettyPrinter(methodCount: 0));
 
   AuthRemoteDatasource({
     FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
+    FirebaseStorage? storage,
   })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+        _firestore = firestore ?? FirebaseFirestore.instance,
+        _storage = storage ?? FirebaseStorage.instance;
 
   /// Stream perubahan status autentikasi.
   Stream<UserModel?> get authStateChanges {
@@ -206,6 +211,29 @@ class AuthRemoteDatasource {
     } catch (e) {
       _logger.w('Gagal mengambil data user dari Firestore: $e');
       return null;
+    }
+  }
+
+  /// Upload foto profil user ke Firebase Storage dan kembalikan URL-nya.
+  Future<String> uploadUserAvatar(File imageFile) async {
+    try {
+      final uid = _firebaseAuth.currentUser?.uid;
+      if (uid == null) throw const AuthException('User tidak terautentikasi');
+
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
+      final ref = _storage.ref().child(AppConstants.userAvatarsPath).child(uid).child(fileName);
+
+      final uploadTask = await ref.putFile(
+        imageFile,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+      _logger.i('Avatar berhasil diupload: $downloadUrl');
+      return downloadUrl;
+    } catch (e, stackTrace) {
+      _logger.e('Error mengupload avatar', error: e, stackTrace: stackTrace);
+      throw const AuthException('Gagal mengupload foto profil');
     }
   }
 }

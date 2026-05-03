@@ -24,10 +24,9 @@ class ProductRemoteDatasource {
       _firestore.collection(AppConstants.productsCollection);
 
   /// Ambil semua produk milik user tertentu.
-  Future<List<ProductModel>> getProducts(String ownerId) async {
+  Future<List<ProductModel>> getProducts() async {
     try {
       final snapshot = await _productsRef
-          .where('ownerId', isEqualTo: ownerId)
           .orderBy('createdAt', descending: true)
           .get();
 
@@ -102,9 +101,12 @@ class ProductRemoteDatasource {
       
       // 2. Simpan data transaksi ke koleksi 'transactions'
       final transactionRef = _firestore.collection(AppConstants.transactionsCollection).doc();
+      final cashierName = items.isNotEmpty ? (items.first['userName'] ?? 'Kasir') : 'Kasir';
+      
       batch.set(transactionRef, {
         'id': transactionRef.id,
         'ownerId': ownerId,
+        'userName': cashierName,
         'invoiceNo': invoiceNo,
         'items': items,
         'subtotal': subtotal,
@@ -134,10 +136,9 @@ class ProductRemoteDatasource {
   }
 
   /// Cari produk berdasarkan nama (client-side filtering).
-  Future<List<ProductModel>> searchProducts(String query, String ownerId) async {
+  Future<List<ProductModel>> searchProducts(String query) async {
     try {
       final snapshot = await _productsRef
-          .where('ownerId', isEqualTo: ownerId)
           .where('isActive', isEqualTo: true)
           .get();
 
@@ -155,10 +156,10 @@ class ProductRemoteDatasource {
   }
 
   /// Upload gambar produk ke Firebase Storage dan kembalikan URL-nya.
-  Future<String> uploadProductImage(File imageFile, String ownerId) async {
+  Future<String> uploadProductImage(File imageFile, String userId) async {
     try {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
-      final ref = _storage.ref().child(AppConstants.productImagesPath).child(ownerId).child(fileName);
+      final ref = _storage.ref().child(AppConstants.productImagesPath).child(userId).child(fileName);
 
       final uploadTask = await ref.putFile(
         imageFile,
@@ -182,6 +183,110 @@ class ProductRemoteDatasource {
       _logger.i('Gambar produk berhasil dihapus');
     } catch (e) {
       _logger.w('Gagal menghapus gambar produk: $e');
+    }
+  }
+
+  /// Ambil statistik untuk dashboard admin.
+  Future<Map<String, dynamic>> getDashboardStats() async {
+    try {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final weekStart = todayStart.subtract(const Duration(days: 6));
+
+      // 1. Total Produk
+      final productsQuery =
+          await _productsRef.get();
+      final totalProducts = productsQuery.docs.length;
+
+      // 2. Stok Menipis (Threshold < 5)
+      final lowStockProducts = productsQuery.docs
+          .map((doc) => ProductModel.fromFirestore(doc))
+          .where((p) => p.stock < 5)
+          .toList();
+
+      // 3. Transaksi Hari Ini
+      final transactionsRef = _firestore.collection(AppConstants.transactionsCollection);
+      final todayTransactionsQuery = await transactionsRef
+          .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(todayStart))
+          .get();
+
+      double todayRevenue = 0;
+      for (final doc in todayTransactionsQuery.docs) {
+        todayRevenue += (doc.data()['total'] ?? 0).toDouble();
+      }
+
+      // 4. Perbandingan Pendapatan (Kemarin vs Hari Ini)
+      final yesterdayStart = todayStart.subtract(const Duration(days: 1));
+      final yesterdayTransactionsQuery = await transactionsRef
+          .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(yesterdayStart))
+          .where('createdAt', isLessThan: Timestamp.fromDate(todayStart))
+          .get();
+
+      double yesterdayRevenue = 0;
+      for (final doc in yesterdayTransactionsQuery.docs) {
+        yesterdayRevenue += (doc.data()['total'] ?? 0).toDouble();
+      }
+
+      double revenueChange = 0;
+      if (yesterdayRevenue > 0) {
+        revenueChange = ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100;
+      } else if (todayRevenue > 0) {
+        revenueChange = 100;
+      }
+
+      // 5. Total Seluruh Transaksi
+      final allTransactionsQuery =
+          await transactionsRef.get();
+      final totalTransactions = allTransactionsQuery.docs.length;
+
+      // 6. Tren Penjualan 7 Hari Terakhir
+      final weekTransactionsQuery = await transactionsRef
+          .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(weekStart))
+          .orderBy('createdAt', descending: false)
+          .get();
+
+      final Map<String, double> dailyTrend = {};
+      // Inisialisasi 7 hari dengan 0
+      for (int i = 0; i < 7; i++) {
+        final date = weekStart.add(Duration(days: i));
+        final label = _getDayLabel(date.weekday);
+        dailyTrend[label] = 0;
+      }
+
+      for (final doc in weekTransactionsQuery.docs) {
+        final createdAt = (doc.data()['createdAt'] as Timestamp?)?.toDate();
+        if (createdAt != null) {
+          final label = _getDayLabel(createdAt.weekday);
+          dailyTrend[label] = (dailyTrend[label] ?? 0) + (doc.data()['total'] ?? 0).toDouble();
+        }
+      }
+
+      return {
+        'totalProducts': totalProducts,
+        'lowStockCount': lowStockProducts.length,
+        'lowStockProducts': lowStockProducts.map((p) => p.toEntity()).toList(),
+        'todayRevenue': todayRevenue,
+        'todayTransactions': todayTransactionsQuery.docs.length,
+        'revenueChange': revenueChange,
+        'totalTransactions': totalTransactions,
+        'salesTrend': dailyTrend,
+      };
+    } catch (e, stackTrace) {
+      _logger.e('Error mengambil dashboard stats', error: e, stackTrace: stackTrace);
+      throw const ServerException('Gagal mengambil statistik dashboard');
+    }
+  }
+
+  String _getDayLabel(int weekday) {
+    switch (weekday) {
+      case DateTime.monday: return 'Sen';
+      case DateTime.tuesday: return 'Sel';
+      case DateTime.wednesday: return 'Rab';
+      case DateTime.thursday: return 'Kam';
+      case DateTime.friday: return 'Jum';
+      case DateTime.saturday: return 'Sab';
+      case DateTime.sunday: return 'Ming';
+      default: return '';
     }
   }
 }

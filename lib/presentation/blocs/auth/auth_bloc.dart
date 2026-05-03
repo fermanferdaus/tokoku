@@ -29,6 +29,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthEmailSignInRequested>(_onEmailSignInRequested);
     on<AuthEmailSignUpRequested>(_onEmailSignUpRequested);
     on<AuthSignOutRequested>(_onSignOutRequested);
+    on<AuthUserUpdated>(_onUserUpdated);
     on<_AuthUserChanged>(_onUserChanged);
   }
 
@@ -163,6 +164,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _logger.e('Logout gagal: ${e.message}');
       emit(AuthError(e.message));
     }
+  }
+
+  /// Handler update data user secara lokal.
+  void _onUserUpdated(
+    AuthUserUpdated event,
+    Emitter<AuthState> emit,
+  ) {
+    emit(AuthAuthenticated(event.user));
+    _logger.i('Auth state updated with new user data: ${event.user.displayName}');
   }
 
   @override

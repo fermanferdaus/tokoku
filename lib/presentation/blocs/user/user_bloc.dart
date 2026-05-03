@@ -90,7 +90,24 @@ class UserBloc extends Bloc<UserEvent, UserState> {
         return;
       }
 
-      await _authRepository.updateUser(event.user, password: event.password);
+      String? photoUrl = event.user.photoUrl;
+      
+      // Jika ada file gambar baru
+      if (event.imageFile != null) {
+        photoUrl = await _authRepository.uploadUserAvatar(event.imageFile!);
+      }
+
+      final updatedUser = UserEntity(
+        uid: event.user.uid,
+        email: event.user.email,
+        displayName: event.user.displayName,
+        role: event.user.role,
+        photoUrl: photoUrl,
+        createdAt: event.user.createdAt,
+        lastLoginAt: event.user.lastLoginAt,
+      );
+
+      await _authRepository.updateUser(updatedUser, password: event.password);
       
       // Ambil data terbaru segera
       final updatedUsers = await _authRepository.getUsers();

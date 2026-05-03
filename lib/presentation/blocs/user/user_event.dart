@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:equatable/equatable.dart';
 import '../../../../domain/entities/user_entity.dart';
 
@@ -28,11 +29,18 @@ class UserAddRequested extends UserEvent {
 class UserUpdateRequested extends UserEvent {
   final UserEntity user;
   final String? password;
+  final File? imageFile;
+  final String? originalImageUrl;
 
-  const UserUpdateRequested(this.user, {this.password});
+  const UserUpdateRequested(
+    this.user, {
+    this.password,
+    this.imageFile,
+    this.originalImageUrl,
+  });
 
   @override
-  List<Object?> get props => [user, password];
+  List<Object?> get props => [user, password, imageFile, originalImageUrl];
 }
 
 class UserDeleteRequested extends UserEvent {
