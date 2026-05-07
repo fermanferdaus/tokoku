@@ -44,17 +44,21 @@ class AppRouter {
         final isOnLogin = state.matchedLocation == login;
         final isOnRegister = state.matchedLocation == register;
 
-        // Masih loading — jika di halaman auth (login/register), tetap di sana
-        if (authState is AuthLoading || authState is AuthInitial) {
-          if (isOnLogin || isOnRegister) return null;
+        // Hanya ke Splash saat pertama kali aplikasi dibuka (Initial)
+        if (authState is AuthInitial) {
           return isOnSplash ? null : splash;
         }
 
-        // Jika sedang di Splash dan status sudah jelas (bukan loading/initial), arahkan ke home atau login
+        // Jika sedang loading (login/logout), jangan pindah halaman dulu (biar ditangani LoadingOverlay)
+        if (authState is AuthLoading) {
+          return null;
+        }
+
+        // Jika sedang di Splash dan status sudah jelas, arahkan ke home atau login
         if (isOnSplash) {
           if (authState is AuthAuthenticated) return home;
           if (authState is AuthUnauthenticated) return login;
-          return null; // Tetap di splash selama loading
+          return null;
         }
 
         // Pendaftaran berhasil — arahkan ke login
@@ -62,8 +66,8 @@ class AppRouter {
           return isOnLogin ? null : login;
         }
 
-        // Belum login — arahkan ke login (kecuali jika sedang di register)
-        if (authState is AuthUnauthenticated) {
+        // Belum login atau terjadi error — arahkan ke login (kecuali jika sedang di register)
+        if (authState is AuthUnauthenticated || authState is AuthError) {
           if (isOnRegister) return null;
           return isOnLogin ? null : login;
         }
@@ -173,12 +177,14 @@ class AppRouter {
             final cash = extra['cash'] as double;
             final change = extra['change'] as double;
             final invoiceNo = extra['invoiceNo'] as String;
+            final paymentMethod = extra['paymentMethod'] as String? ?? 'Tunai / Cash';
 
             return InvoiceScreen(
               cartState: cartState,
               cash: cash,
               change: change,
               invoiceNo: invoiceNo,
+              paymentMethod: paymentMethod,
             );
           },
         ),

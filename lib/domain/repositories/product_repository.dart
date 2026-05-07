@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import '../entities/product_entity.dart';
 
@@ -23,7 +23,7 @@ abstract class ProductRepository {
   Future<List<ProductEntity>> searchProducts(String query);
 
   /// Upload gambar produk dan kembalikan URL-nya.
-  Future<String> uploadProductImage(File imageFile);
+  Future<String> uploadProductImage(Uint8List imageBytes, String fileName);
 
   /// Hapus gambar produk dari storage.
   Future<void> deleteProductImage(String imageUrl);
@@ -36,6 +36,7 @@ abstract class ProductRepository {
     required double total,
     required double cash,
     required double change,
+    required String paymentMethod,
   });
 
   /// Mengambil statistik dashboard.
@@ -43,6 +44,13 @@ abstract class ProductRepository {
 
   /// Mengambil riwayat transaksi dengan filter tanggal.
   Future<List<Map<String, dynamic>>> getTransactions({
+    DateTime? startDate,
+    DateTime? endDate,
+  });
+
+  /// Mengambil data laporan lengkap (statistik + tren + produk terlaris).
+  Future<Map<String, dynamic>> getReportData({
+    required String ownerId,
     DateTime? startDate,
     DateTime? endDate,
   });

@@ -1,9 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter/services.dart';
 import 'package:tokoku/presentation/blocs/auth/auth_bloc.dart';
 import 'package:tokoku/presentation/blocs/auth/auth_state.dart';
 
@@ -15,8 +13,6 @@ import '../../../domain/entities/product_entity.dart';
 import '../../../domain/repositories/category_repository.dart';
 import '../../../injection_container.dart';
 import '../../blocs/product/product_bloc.dart';
-import '../../blocs/product/product_event.dart';
-import '../../blocs/product/product_state.dart';
 import '../../widgets/common/app_button.dart';
 
 /// Halaman daftar produk dengan fitur search dan CRUD.
@@ -369,21 +365,24 @@ class _ProductListScreenState extends State<ProductListScreen> {
           // Bagian Gambar
           Stack(
             children: [
-              Container(
+              SizedBox(
                 height:
                     150, // Fixed height for image area to keep it consistent but allow card to expand
                 width: double.infinity,
                 child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: product.imageUrl!,
+                    ? Image.network(
+                        product.imageUrl!,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: AppColors.surfaceVariant,
-                          child: const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            color: AppColors.surfaceVariant,
+                            child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) => Container(
                           color: AppColors.surfaceVariant,
                           child: const Icon(
                             Icons.broken_image_outlined,
@@ -646,8 +645,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           selected: tempPriceSort == 'none',
                           selectedColor: AppColors.primaryContainer,
                           onSelected: (selected) {
-                            if (selected)
+                            if (selected) {
                               setModalState(() => tempPriceSort = 'none');
+                            }
                           },
                         ),
                         ChoiceChip(
@@ -655,8 +655,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           selected: tempPriceSort == 'asc',
                           selectedColor: AppColors.primaryContainer,
                           onSelected: (selected) {
-                            if (selected)
+                            if (selected) {
                               setModalState(() => tempPriceSort = 'asc');
+                            }
                           },
                         ),
                         ChoiceChip(
@@ -664,8 +665,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           selected: tempPriceSort == 'desc',
                           selectedColor: AppColors.primaryContainer,
                           onSelected: (selected) {
-                            if (selected)
+                            if (selected) {
                               setModalState(() => tempPriceSort = 'desc');
+                            }
                           },
                         ),
                       ],
@@ -684,8 +686,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             selected: tempCategory == null,
                             selectedColor: AppColors.primaryContainer,
                             onSelected: (selected) {
-                              if (selected)
+                              if (selected) {
                                 setModalState(() => tempCategory = null);
+                              }
                             },
                           ),
                           ..._categories.map((cat) {

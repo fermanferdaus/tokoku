@@ -1,8 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:io';
 import 'package:logger/logger.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -20,9 +21,9 @@ class AuthRemoteDatasource {
     FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
     FirebaseStorage? storage,
-  })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _storage = storage ?? FirebaseStorage.instance;
+  }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
+       _firestore = firestore ?? FirebaseFirestore.instance,
+       _storage = storage ?? FirebaseStorage.instance;
 
   /// Stream perubahan status autentikasi.
   Stream<UserModel?> get authStateChanges {
@@ -68,6 +69,9 @@ class AuthRemoteDatasource {
       String message = 'Terjadi kesalahan saat login';
       if (e.code == 'user-not-found') message = 'Email tidak terdaftar';
       if (e.code == 'wrong-password') message = 'Password salah';
+      if (e.code == 'invalid-credential') message = 'Email atau password salah';
+      if (e.code == 'invalid-email') message = 'Format email tidak valid';
+      if (e.code == 'user-disabled') message = 'Akun ini telah dinonaktifkan';
       throw AuthException(message, code: e.code);
     } catch (e) {
       throw const AuthException('Terjadi kesalahan yang tidak terduga');
@@ -152,7 +156,7 @@ class AuthRemoteDatasource {
           .collection(AppConstants.usersCollection)
           .orderBy('createdAt', descending: true)
           .get();
-      
+
       return querySnapshot.docs
           .map((doc) => UserModel.fromFirestore(doc))
           .toList();
@@ -165,7 +169,31 @@ class AuthRemoteDatasource {
   /// Hapus user dari Firestore.
   Future<void> deleteUser(String uid) async {
     try {
-      await _firestore.collection(AppConstants.usersCollection).doc(uid).delete();
+      final currentUser = _firebaseAuth.currentUser;
+
+      // Jika user menghapus akunnya sendiri, hapus juga dari Firebase Auth
+      if (currentUser != null && currentUser.uid == uid) {
+        try {
+          await currentUser.delete();
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'requires-recent-login') {
+            throw const AuthException(
+              'Penghapusan akun membutuhkan login ulang. Silakan logout dan login kembali untuk melanjutkan.',
+            );
+          }
+          rethrow;
+        }
+      }
+
+      // Hapus dari Firestore
+      // Note: Jika admin menghapus user lain, Firebase Client SDK tidak mengizinkan
+      // menghapus user lain dari Authentication. Ini membutuhkan Firebase Admin SDK (Cloud Functions).
+      await _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(uid)
+          .delete();
+    } on AuthException {
+      rethrow;
     } catch (e) {
       _logger.e('Gagal menghapus user: $e');
       throw const AuthException('Gagal menghapus user dari database');
@@ -175,6 +203,26 @@ class AuthRemoteDatasource {
   /// Update data user di Firestore.
   Future<void> updateUser(UserModel user, {String? password}) async {
     try {
+      final currentUser = _firebaseAuth.currentUser;
+
+      // Update Email di Firebase Auth jika user mengupdate dirinya sendiri
+      if (currentUser != null && currentUser.uid == user.uid) {
+        if (user.email != currentUser.email && user.email.isNotEmpty) {
+          try {
+            // Menggunakan updateEmail agar perubahan terjadi instan (Tanpa link verifikasi).
+            // Fitur ini bisa berjalan karena Email Enumeration Protection sudah dimatikan di Console.
+            await currentUser.updateEmail(user.email);
+          } on FirebaseAuthException catch (e) {
+            if (e.code == 'requires-recent-login') {
+              throw const AuthException(
+                'Perubahan email membutuhkan login ulang. Silakan logout dan login kembali untuk melanjutkan.',
+              );
+            }
+            rethrow;
+          }
+        }
+      }
+
       // Update Firestore
       await _firestore
           .collection(AppConstants.usersCollection)
@@ -182,9 +230,20 @@ class AuthRemoteDatasource {
           .update(user.toFirestore());
 
       // Update Password jika diberikan (Hanya jika user yang sedang login adalah target)
-      if (password != null && _firebaseAuth.currentUser?.uid == user.uid) {
-        await _firebaseAuth.currentUser?.updatePassword(password);
+      if (password != null && currentUser?.uid == user.uid) {
+        try {
+          await currentUser?.updatePassword(password);
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'requires-recent-login') {
+            throw const AuthException(
+              'Perubahan password membutuhkan login ulang. Silakan logout dan login kembali untuk melanjutkan.',
+            );
+          }
+          rethrow;
+        }
       }
+    } on AuthException {
+      rethrow;
     } catch (e) {
       _logger.e('Gagal update user: $e');
       throw const AuthException('Gagal memperbarui data user');
@@ -193,7 +252,9 @@ class AuthRemoteDatasource {
 
   /// Simpan atau update data user di Firestore.
   Future<void> _saveUserToFirestore(UserModel user, bool isNewUser) async {
-    final docRef = _firestore.collection(AppConstants.usersCollection).doc(user.uid);
+    final docRef = _firestore
+        .collection(AppConstants.usersCollection)
+        .doc(user.uid);
 
     if (isNewUser) {
       await docRef.set(user.toFirestoreNewUser());
@@ -205,7 +266,10 @@ class AuthRemoteDatasource {
   /// Ambil data user dari Firestore.
   Future<UserModel?> _getUserFromFirestore(String uid) async {
     try {
-      final doc = await _firestore.collection(AppConstants.usersCollection).doc(uid).get();
+      final doc = await _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(uid)
+          .get();
       if (!doc.exists) return null;
       return UserModel.fromFirestore(doc);
     } catch (e) {
@@ -215,16 +279,20 @@ class AuthRemoteDatasource {
   }
 
   /// Upload foto profil user ke Firebase Storage dan kembalikan URL-nya.
-  Future<String> uploadUserAvatar(File imageFile) async {
+  Future<String> uploadUserAvatar(Uint8List imageBytes, String fileName) async {
     try {
       final uid = _firebaseAuth.currentUser?.uid;
       if (uid == null) throw const AuthException('User tidak terautentikasi');
 
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
-      final ref = _storage.ref().child(AppConstants.userAvatarsPath).child(uid).child(fileName);
+      final storageName = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      final ref = _storage
+          .ref()
+          .child(AppConstants.userAvatarsPath)
+          .child(uid)
+          .child(storageName);
 
-      final uploadTask = await ref.putFile(
-        imageFile,
+      final uploadTask = await ref.putData(
+        imageBytes,
         SettableMetadata(contentType: 'image/jpeg'),
       );
 

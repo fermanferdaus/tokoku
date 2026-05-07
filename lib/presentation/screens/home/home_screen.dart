@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:tokoku/core/utils/formatters.dart';
 import 'package:tokoku/presentation/blocs/product/product_bloc.dart';
 import 'package:tokoku/presentation/screens/product/product_list_screen.dart';
 import 'package:tokoku/presentation/screens/transaction/transaction_screen.dart';
 import 'package:tokoku/presentation/screens/transaction/history_screen.dart';
 import 'package:tokoku/presentation/screens/home/profile_screen.dart';
+import 'package:tokoku/presentation/screens/home/settings_screen.dart';
+import 'package:tokoku/presentation/screens/home/report_screen.dart';
 import 'package:tokoku/presentation/widgets/common/app_button.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -72,9 +75,9 @@ class _HomeScreenState extends State<HomeScreen> {
         case 2:
           return const UserManagementScreen();
         case 3:
-          return _PlaceholderBody(title: 'Laporan');
+          return const ReportScreen();
         case 4:
-          return _PlaceholderBody(title: 'Pengaturan');
+          return const SettingsScreen();
         default:
           return const SizedBox.shrink();
       }
@@ -108,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'Dashboard',
         'Produk',
         'Kelola User',
-        'Laporan',
+        'Laporan Penjualan',
         'Pengaturan',
       ][_currentIndex];
     } else {
@@ -153,8 +156,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         errorBuilder: (context, error, stackTrace) {
                           return Center(
                             child: Text(
-                              user.displayName?.isNotEmpty == true
-                                  ? user.displayName![0].toUpperCase()
+                              (user?.displayName?.isNotEmpty == true)
+                                  ? user!.displayName![0].toUpperCase()
                                   : 'U',
                               style: AppTextStyles.titleMedium.copyWith(
                                 color: Colors.white,
@@ -166,8 +169,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     )
                   : Center(
                       child: Text(
-                        user?.displayName?.isNotEmpty == true
-                            ? user!.displayName[0].toUpperCase()
+                        (user?.displayName?.isNotEmpty == true)
+                            ? user!.displayName![0].toUpperCase()
                             : 'U',
                         style: AppTextStyles.titleMedium.copyWith(
                           color: Colors.white,
@@ -330,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   child: ClipOval(
-                    child: user?.photoUrl != null
+                    child: (user?.photoUrl != null)
                         ? Image.network(
                             user!.photoUrl!,
                             fit: BoxFit.cover,
@@ -397,8 +400,8 @@ class _HomeScreenState extends State<HomeScreen> {
       color: AppColors.primary.withValues(alpha: 0.1),
       child: Center(
         child: Text(
-          user?.displayName?.isNotEmpty == true
-              ? user.displayName[0].toUpperCase()
+          (user?.displayName?.isNotEmpty == true)
+              ? user!.displayName![0].toUpperCase()
               : 'U',
           style: AppTextStyles.displaySmall.copyWith(
             color: AppColors.primary,
@@ -457,18 +460,20 @@ class _DashboardBody extends StatelessWidget {
                   const SizedBox(height: 16),
 
                   // Stats Row (Admin Only)
-                  _buildStatsRow(
-                    stats?['totalTransactions'] ?? 0,
-                    stats?['totalProducts'] ?? 0,
-                    isLoading,
-                  ),
-                  const SizedBox(height: 24),
+                    _buildStatsRow(
+                      stats?['totalTransactions'] ?? 0,
+                      stats?['totalProducts'] ?? 0,
+                      isLoading,
+                    ),
+                    const SizedBox(height: 24),
 
-                  // Tren Penjualan (Admin Only)
-                  _buildSalesTrend(
-                    stats?['salesTrend'] as Map<String, double>?,
-                  ),
-                  const SizedBox(height: 20),
+                    // Tren Penjualan (Admin Only)
+                    _buildSalesTrend(stats?['salesTrend'] ?? {}, isLoading),
+                    const SizedBox(height: 24),
+
+                    // Produk Terlaris Pie Chart (Admin Only)
+                    _buildTopProductsPieChart(stats?['topProducts'] ?? [], isLoading),
+                    const SizedBox(height: 24),
                 ] else ...[
                   // Alert stok menipis (Tampilkan juga untuk Kasir agar mereka tahu)
                   _buildStockAlert(stats?['lowStockCount'] ?? 0),
@@ -1069,14 +1074,32 @@ class _DashboardBody extends StatelessWidget {
       ),
     );
   }
+  Widget _buildSalesTrend(Map<String, dynamic> trend, bool isLoading) {
+    if (isLoading) {
+      return Container(
+        height: 250,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
-  Widget _buildSalesTrend(Map<String, double>? salesTrend) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1084,124 +1107,239 @@ class _DashboardBody extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Tren Penjualan (7 Hari)', style: AppTextStyles.titleMedium),
-              TextButton(
-                onPressed: () => onTabChange(3), // Go to reports
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(60, 30),
+              Text(
+                'Tren Penjualan (7 Hari)',
+                style: AppTextStyles.titleMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  'Lihat Detail',
-                  style: AppTextStyles.bodySmall.copyWith(
+                  'Grafik Batang',
+                  style: AppTextStyles.labelSmall.copyWith(
                     color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          _buildBarChart(salesTrend),
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 200,
+            child: _buildBarChart(trend),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildBarChart(Map<String, double>? salesTrend) {
-    // Default data jika null
-    final trendData =
-        salesTrend ??
-        {'Sen': 0, 'Sel': 0, 'Rab': 0, 'Kam': 0, 'Jum': 0, 'Sab': 0, 'Ming': 0};
-
-    final maxVal = trendData.values.fold<double>(
-      0,
-      (prev, curr) => curr > prev ? curr : prev,
-    );
-
-    return SizedBox(
-      height: 140,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: trendData.entries.map((entry) {
-          final heightFactor = maxVal > 0 ? entry.value / maxVal : 0.0;
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
+  Widget _buildBarChart(Map<String, dynamic> trendData) {
+    final List<String> days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Ming'];
+    
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: _getMaxY(trendData),
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                '${days[group.x.toInt()]}\n',
+                AppTextStyles.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
                 children: [
-                  Flexible(
-                    child: FractionallySizedBox(
-                      heightFactor: heightFactor.clamp(
-                        0.05,
-                        1.0,
-                      ), // Min height agar kelihatan
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [
-                              AppColors.primary,
-                              AppColors.primaryLight.withValues(alpha: 0.7),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    entry.key,
-                    style: AppTextStyles.labelSmall.copyWith(
-                      color: AppColors.textTertiary,
-                      fontSize: 10,
-                    ),
+                  TextSpan(
+                    text: Formatters.currency(rod.toY),
+                    style: AppTextStyles.labelSmall.copyWith(color: Colors.white),
                   ),
                 ],
-              ),
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    days[value.toInt() % 7],
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                );
+              },
             ),
+          ),
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        barGroups: List.generate(days.length, (index) {
+          final day = days[index];
+          final value = (trendData[day] ?? 0).toDouble();
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: value,
+                color: AppColors.primary,
+                width: 16,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(6),
+                  topRight: Radius.circular(6),
+                ),
+                backDrawRodData: BackgroundBarChartRodData(
+                  show: true,
+                  toY: _getMaxY(trendData),
+                  color: AppColors.primaryContainer.withValues(alpha: 0.1),
+                ),
+              ),
+            ],
           );
-        }).toList(),
+        }),
       ),
     );
   }
-}
 
-class _PlaceholderBody extends StatelessWidget {
-  final String title;
-  const _PlaceholderBody({required this.title});
+  double _getMaxY(Map<String, dynamic> trendData) {
+    double max = 100000;
+    trendData.forEach((key, value) {
+      if (value.toDouble() > max) max = value.toDouble();
+    });
+    return max * 1.2;
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Center(
+  Widget _buildTopProductsPieChart(List<dynamic> topProducts, bool isLoading) {
+    if (isLoading) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (topProducts.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final colors = [
+      AppColors.primary,
+      const Color(0xFF6366F1),
+      const Color(0xFFF59E0B),
+      const Color(0xFF10B981),
+      const Color(0xFFEF4444),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.construction_rounded,
-            size: 72,
-            color: AppColors.textTertiary.withValues(alpha: 0.5),
-          ),
-          const SizedBox(height: 16),
           Text(
-            'Halaman $title',
-            style: AppTextStyles.headlineSmall.copyWith(
-              color: AppColors.textSecondary,
+            'Distribusi Produk Terlaris',
+            style: AppTextStyles.titleMedium.copyWith(
+              fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Halaman ini sedang dalam tahap pengembangan.',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textTertiary,
-            ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                flex: 1,
+                child: SizedBox(
+                  height: 160,
+                  child: PieChart(
+                    PieChartData(
+                      sectionsSpace: 4,
+                      centerSpaceRadius: 35,
+                      sections: List.generate(topProducts.length, (i) {
+                        final product = topProducts[i];
+                        final count = (product['count'] as int).toDouble();
+                        return PieChartSectionData(
+                          color: colors[i % colors.length],
+                          value: count,
+                          title: '${count.toInt()}',
+                          radius: 45,
+                          titleStyle: AppTextStyles.labelSmall.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                flex: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(topProducts.length, (i) {
+                    final product = topProducts[i];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: colors[i % colors.length],
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              product['name'],
+                              style: AppTextStyles.labelSmall.copyWith(
+                                color: Colors.grey.shade700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 }
+

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +12,8 @@ import '../../blocs/cart/cart_bloc.dart';
 import '../../blocs/cart/cart_event.dart';
 import '../../blocs/cart/cart_state.dart';
 
+enum PaymentMethod { cash, qris }
+
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
 
@@ -23,6 +24,7 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   final TextEditingController _cashController = TextEditingController();
   double _change = 0;
+  PaymentMethod _paymentMethod = PaymentMethod.cash;
 
   @override
   void dispose() {
@@ -112,7 +114,7 @@ class _CartScreenState extends State<CartScreen> {
                 ),
                 if (state.isProcessing)
                   Container(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withValues(alpha: 0.3),
                     child: const Center(child: CircularProgressIndicator()),
                   ),
               ],
@@ -185,14 +187,14 @@ class _CartScreenState extends State<CartScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Container(
+            child: SizedBox(
               width: 60,
               height: 60,
               child:
                   item.product.imageUrl != null &&
                       item.product.imageUrl!.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: item.product.imageUrl!,
+                  ? Image.network(
+                      item.product.imageUrl!,
                       fit: BoxFit.cover,
                     )
                   : const Icon(Icons.inventory_2_outlined),
@@ -300,10 +302,53 @@ class _CartScreenState extends State<CartScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Input Uang Bayar
+          // Metode Pembayaran
           Text(
-            'Uang Tunai',
+            'Metode Pembayaran',
             style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: RadioListTile<PaymentMethod>(
+                  title: const Text('Tunai'),
+                  value: PaymentMethod.cash,
+                  groupValue: _paymentMethod,
+                  onChanged: (value) {
+                    setState(() {
+                      _paymentMethod = value!;
+                      _calculateChange(state.total);
+                    });
+                  },
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              Expanded(
+                child: RadioListTile<PaymentMethod>(
+                  title: const Text('QRIS'),
+                  value: PaymentMethod.qris,
+                  groupValue: _paymentMethod,
+                  onChanged: (value) {
+                    setState(() {
+                      _paymentMethod = value!;
+                      _change = 0;
+                    });
+                  },
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Input Uang Bayar (Hanya tampil jika Tunai)
+          if (_paymentMethod == PaymentMethod.cash) ...[
+            Text(
+              'Uang Tunai',
+              style: AppTextStyles.bodyMedium.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -350,6 +395,7 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ],
           ),
+          ],
         ],
       ),
     );
@@ -384,10 +430,9 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildActionButtons(BuildContext context, CartState state) {
-    final bool canPay =
-        _change >= 0 &&
-        state.items.isNotEmpty &&
-        _cashController.text.isNotEmpty;
+    final bool canPay = _paymentMethod == PaymentMethod.qris
+        ? state.items.isNotEmpty
+        : (_change >= 0 && state.items.isNotEmpty && _cashController.text.isNotEmpty);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -398,7 +443,7 @@ class _CartScreenState extends State<CartScreen> {
           children: [
             Expanded(
               child: ElevatedButton(
-                onPressed: canPay ? () => _goToInvoice(context, state) : null,
+                onPressed: canPay ? () => _handlePayment(context, state) : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -421,6 +466,52 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  void _handlePayment(BuildContext context, CartState state) {
+    if (_paymentMethod == PaymentMethod.qris) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Scan QRIS'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset('assets/images/qris.png', width: 250, height: 250),
+              const SizedBox(height: 16),
+              Text(
+                'Total: ${Formatters.currency(state.total)}',
+                style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text('Silakan scan QR Code di atas menggunakan aplikasi e-wallet Anda.', textAlign: TextAlign.center),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                // Simulate exact cash for QRIS
+                _cashController.text = state.total.toInt().toString();
+                _change = 0;
+                _goToInvoice(context, state);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Sudah Dibayar'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      _goToInvoice(context, state);
+    }
+  }
+
   String _generateInvoiceNumber() {
     final now = DateTime.now();
     final dateStr =
@@ -437,7 +528,12 @@ class _CartScreenState extends State<CartScreen> {
 
     // Proses potong stok dan simpan transaksi di Bloc
     context.read<CartBloc>().add(
-      ProcessCheckout(invoiceNo: invoiceNo, cash: cash, change: _change),
+      ProcessCheckout(
+        invoiceNo: invoiceNo,
+        cash: cash,
+        change: _change,
+        paymentMethod: _paymentMethod == PaymentMethod.qris ? 'QRIS' : 'Tunai / Cash',
+      ),
     );
 
     final bloc = context.read<CartBloc>();
@@ -458,6 +554,7 @@ class _CartScreenState extends State<CartScreen> {
               'cash': cash,
               'change': _change,
               'invoiceNo': invoiceNo,
+              'paymentMethod': _paymentMethod == PaymentMethod.qris ? 'QRIS' : 'Tunai / Cash',
             },
           );
         }

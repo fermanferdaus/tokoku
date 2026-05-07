@@ -63,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Logo Icon
-                const AppLogo(size: 120, iconSize: 64, borderRadius: 30),
+                const AppLogo(size: 120, borderRadius: 30),
                 const SizedBox(height: 24),
 
                 // App Name

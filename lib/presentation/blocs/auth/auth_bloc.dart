@@ -45,12 +45,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       (user) {
         // Abaikan perubahan jika sedang dalam proses pendaftaran manual
         if (_isRegistering) return;
-
-        if (user.isNotEmpty) {
-          add(const _AuthUserChanged(isAuthenticated: true));
-        } else {
-          add(const _AuthUserChanged(isAuthenticated: false));
-        }
+        add(_AuthUserChanged(user));
       },
       onError: (error) {
         _logger.e('Auth stream error', error: error);
@@ -140,11 +135,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     _AuthUserChanged event,
     Emitter<AuthState> emit,
   ) {
-    if (event.isAuthenticated) {
-      final user = _authRepository.currentUser;
-      if (user.isNotEmpty) {
-        emit(AuthAuthenticated(user));
-      }
+    if (event.user.isNotEmpty) {
+      emit(AuthAuthenticated(event.user));
     } else {
       emit(const AuthUnauthenticated());
     }
@@ -157,12 +149,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
     try {
+      // 1. Batalkan subscription terlebih dahulu agar tidak ada event masuk lagi
+      await _authSubscription?.cancel();
+      _authSubscription = null;
+
+      // 2. Lakukan sign out
       await _authRepository.signOut();
-      emit(const AuthUnauthenticated());
+      
       _logger.i('Logout berhasil');
-    } on AuthFailure catch (e) {
-      _logger.e('Logout gagal: ${e.message}');
-      emit(AuthError(e.message));
+      emit(const AuthUnauthenticated());
+    } catch (e) {
+      _logger.e('Logout error (akan tetap diarahkan ke Login): $e');
+      // Tetap arahkan ke unauthenticated demi keamanan
+      emit(const AuthUnauthenticated());
     }
   }
 
@@ -184,10 +183,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
 /// Event internal untuk perubahan user dari stream.
 class _AuthUserChanged extends AuthEvent {
-  final bool isAuthenticated;
+  final UserEntity user;
 
-  const _AuthUserChanged({required this.isAuthenticated});
+  const _AuthUserChanged(this.user);
 
   @override
-  List<Object?> get props => [isAuthenticated];
+  List<Object?> get props => [user];
 }

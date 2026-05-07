@@ -130,7 +130,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Center(child: AppLogo(size: 72, iconSize: 40, borderRadius: 18)),
+                        const Center(child: AppLogo(size: 72, borderRadius: 18)),
                         const SizedBox(height: 24),
                         Text(
                           'Buat Akun Baru',

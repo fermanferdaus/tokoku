@@ -41,11 +41,13 @@ class ProcessCheckout extends CartEvent {
   final String invoiceNo;
   final double cash;
   final double change;
+  final String paymentMethod;
 
   const ProcessCheckout({
     required this.invoiceNo,
     required this.cash,
     required this.change,
+    required this.paymentMethod,
   });
 
   @override

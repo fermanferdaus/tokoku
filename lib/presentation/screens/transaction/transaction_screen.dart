@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -15,8 +14,6 @@ import '../../blocs/cart/cart_bloc.dart';
 import '../../blocs/cart/cart_event.dart';
 import '../../blocs/cart/cart_state.dart';
 import '../../blocs/product/product_bloc.dart';
-import '../../blocs/product/product_event.dart';
-import '../../blocs/product/product_state.dart';
 
 class TransactionScreen extends StatefulWidget {
   const TransactionScreen({super.key});
@@ -163,7 +160,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       );
     }
 
-    return Container(
+    return SizedBox(
       height: 60,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -341,10 +338,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   aspectRatio: 1,
                   child:
                       product.imageUrl != null && product.imageUrl!.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: product.imageUrl!,
+                      ? Image.network(
+                          product.imageUrl!,
                           fit: BoxFit.cover,
-                          errorWidget: (context, url, error) =>
+                          errorBuilder: (context, error, stackTrace) =>
                               const Icon(Icons.broken_image),
                         )
                       : Container(
@@ -362,10 +359,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.warningLight.withOpacity(0.9),
+                        color: AppColors.warningLight.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: AppColors.warning.withOpacity(0.5),
+                          color: AppColors.warning.withValues(alpha: 0.5),
                         ),
                       ),
                       child: Row(
@@ -485,7 +482,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
             color: AppColors.surface,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, -5),
               ),
@@ -601,8 +598,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
                           selected: tempPriceSort == 'none',
                           selectedColor: AppColors.primaryContainer,
                           onSelected: (selected) {
-                            if (selected)
+                            if (selected) {
                               setModalState(() => tempPriceSort = 'none');
+                            }
                           },
                         ),
                         ChoiceChip(
@@ -610,8 +608,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
                           selected: tempPriceSort == 'asc',
                           selectedColor: AppColors.primaryContainer,
                           onSelected: (selected) {
-                            if (selected)
+                            if (selected) {
                               setModalState(() => tempPriceSort = 'asc');
+                            }
                           },
                         ),
                         ChoiceChip(
@@ -619,8 +618,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
                           selected: tempPriceSort == 'desc',
                           selectedColor: AppColors.primaryContainer,
                           onSelected: (selected) {
-                            if (selected)
+                            if (selected) {
                               setModalState(() => tempPriceSort = 'desc');
+                            }
                           },
                         ),
                       ],
@@ -639,8 +639,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
                             selected: tempCategory == null,
                             selectedColor: AppColors.primaryContainer,
                             onSelected: (selected) {
-                              if (selected)
+                              if (selected) {
                                 setModalState(() => tempCategory = null);
+                              }
                             },
                           ),
                           ..._categories.map((cat) {
@@ -814,10 +815,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
                         child:
                             product.imageUrl != null &&
                                 product.imageUrl!.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: product.imageUrl!,
+                            ? Image.network(
+                                product.imageUrl!,
                                 fit: BoxFit.cover,
-                                errorWidget: (context, url, error) =>
+                                errorBuilder: (context, error, stackTrace) =>
                                     const Icon(Icons.broken_image),
                               )
                             : Container(
@@ -943,7 +944,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                 color: AppColors.surface,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -5),
                   ),

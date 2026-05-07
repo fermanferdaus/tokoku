@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 
 import '../../../domain/entities/product_entity.dart';
@@ -29,28 +28,31 @@ class ProductSearchRequested extends ProductEvent {
 /// Tambah produk baru.
 class ProductAddRequested extends ProductEvent {
   final ProductEntity product;
-  final File? imageFile;
+  final Uint8List? imageBytes;
+  final String? imageName;
 
-  const ProductAddRequested({required this.product, this.imageFile});
+  const ProductAddRequested({required this.product, this.imageBytes, this.imageName});
 
   @override
-  List<Object?> get props => [product, imageFile];
+  List<Object?> get props => [product, imageBytes, imageName];
 }
 
 /// Update produk.
 class ProductUpdateRequested extends ProductEvent {
   final ProductEntity product;
-  final File? imageFile;
+  final Uint8List? imageBytes;
+  final String? imageName;
   final String? originalImageUrl;
 
   const ProductUpdateRequested({
     required this.product,
-    this.imageFile,
+    this.imageBytes,
+    this.imageName,
     this.originalImageUrl,
   });
 
   @override
-  List<Object?> get props => [product, imageFile, originalImageUrl];
+  List<Object?> get props => [product, imageBytes, imageName, originalImageUrl];
 }
 
 /// Hapus produk (soft delete).

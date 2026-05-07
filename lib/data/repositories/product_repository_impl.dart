@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import '../../core/errors/exceptions.dart';
 import '../../core/errors/failures.dart';
@@ -87,9 +87,9 @@ class ProductRepositoryImpl implements ProductRepository {
   }
 
   @override
-  Future<String> uploadProductImage(File imageFile) async {
+  Future<String> uploadProductImage(Uint8List imageBytes, String fileName) async {
     try {
-      return await _remoteDatasource.uploadProductImage(imageFile, _currentUserId);
+      return await _remoteDatasource.uploadProductImage(imageBytes, fileName, _currentUserId);
     } on ServerException catch (e) {
       throw ServerFailure(e.message);
     }
@@ -112,6 +112,7 @@ class ProductRepositoryImpl implements ProductRepository {
     required double total,
     required double cash,
     required double change,
+    required String paymentMethod,
   }) async {
     try {
       await _remoteDatasource.processTransaction(
@@ -122,6 +123,7 @@ class ProductRepositoryImpl implements ProductRepository {
         total: total,
         cash: cash,
         change: change,
+        paymentMethod: paymentMethod,
       );
     } on ServerException catch (e) {
       throw ServerFailure(e.message);
@@ -144,6 +146,23 @@ class ProductRepositoryImpl implements ProductRepository {
   }) async {
     try {
       return await _transactionRemoteDatasource.getTransactions(
+        startDate: startDate,
+        endDate: endDate,
+      );
+    } on ServerException catch (e) {
+      throw ServerFailure(e.message);
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getReportData({
+    required String ownerId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      return await _remoteDatasource.getReportData(
+        ownerId: ownerId,
         startDate: startDate,
         endDate: endDate,
       );

@@ -73,9 +73,10 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     emit(const ProductLoading());
     try {
       String? imageUrl;
-      if (event.imageFile != null) {
+      if (event.imageBytes != null) {
         imageUrl = await _productRepository.uploadProductImage(
-          event.imageFile!,
+          event.imageBytes!,
+          event.imageName ?? 'product.jpg',
         );
       }
 
@@ -120,14 +121,15 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       String? imageUrl = event.product.imageUrl;
 
       // Jika ada file gambar baru
-      if (event.imageFile != null) {
+      if (event.imageBytes != null) {
         // Hapus gambar lama dari Storage jika ada
         if (event.originalImageUrl != null &&
             event.originalImageUrl!.isNotEmpty) {
           await _productRepository.deleteProductImage(event.originalImageUrl!);
         }
         imageUrl = await _productRepository.uploadProductImage(
-          event.imageFile!,
+          event.imageBytes!,
+          event.imageName ?? 'product.jpg',
         );
       }
       // Jika tidak ada file baru, tapi gambar dihapus (imageUrl di product adalah null)

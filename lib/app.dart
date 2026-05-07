@@ -12,6 +12,9 @@ import 'presentation/blocs/product/product_bloc.dart';
 import 'presentation/blocs/dashboard/dashboard_bloc.dart';
 import 'presentation/blocs/dashboard/dashboard_state.dart';
 import 'presentation/blocs/history/history_bloc.dart';
+import 'presentation/blocs/settings/settings_bloc.dart';
+import 'presentation/blocs/report/report_bloc.dart';
+import 'presentation/blocs/report/report_event.dart';
 
 /// Root widget aplikasi Tokoku.
 class App extends StatelessWidget {
@@ -26,6 +29,8 @@ class App extends StatelessWidget {
         BlocProvider(create: (_) => sl<CartBloc>()),
         BlocProvider(create: (_) => sl<DashboardBloc>()..add(DashboardFetchRequested())),
         BlocProvider(create: (_) => sl<HistoryBloc>()),
+        BlocProvider(create: (_) => sl<SettingsBloc>()..add(SettingsLoadRequested())),
+        BlocProvider(create: (_) => sl<ReportBloc>()..add(const LoadReportData())),
         BlocProvider.value(value: sl<UserBloc>()),
       ],
       child: const _AppView(),

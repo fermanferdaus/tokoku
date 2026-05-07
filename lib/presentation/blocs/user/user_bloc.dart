@@ -93,8 +93,11 @@ class UserBloc extends Bloc<UserEvent, UserState> {
       String? photoUrl = event.user.photoUrl;
       
       // Jika ada file gambar baru
-      if (event.imageFile != null) {
-        photoUrl = await _authRepository.uploadUserAvatar(event.imageFile!);
+      if (event.imageBytes != null) {
+        photoUrl = await _authRepository.uploadUserAvatar(
+          event.imageBytes!,
+          event.imageName ?? 'avatar.jpg',
+        );
       }
 
       final updatedUser = UserEntity(

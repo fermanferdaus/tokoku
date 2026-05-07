@@ -19,6 +19,8 @@ import 'presentation/blocs/cart/cart_bloc.dart';
 import 'presentation/blocs/user/user_bloc.dart';
 import 'presentation/blocs/dashboard/dashboard_bloc.dart';
 import 'presentation/blocs/history/history_bloc.dart';
+import 'presentation/blocs/settings/settings_bloc.dart';
+import 'presentation/blocs/report/report_bloc.dart';
 
 /// Service Locator — registrasi semua dependency menggunakan GetIt.
 final sl = GetIt.instance;
@@ -65,6 +67,9 @@ Future<void> initDependencies() async {
       settingsRepository: sl<SettingsRepository>(),
     ),
   );
+  sl.registerFactory<DashboardBloc>(
+    () => DashboardBloc(productRepository: sl<ProductRepository>()),
+  );
   sl.registerFactory<ProductBloc>(
     () => ProductBloc(
       productRepository: sl<ProductRepository>(),
@@ -77,10 +82,16 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<UserBloc>(
     () => UserBloc(authRepository: sl<AuthRepository>()),
   );
-  sl.registerFactory<DashboardBloc>(
-    () => DashboardBloc(productRepository: sl<ProductRepository>()),
-  );
   sl.registerFactory<HistoryBloc>(
     () => HistoryBloc(productRepository: sl<ProductRepository>()),
+  );
+  sl.registerFactory<SettingsBloc>(
+    () => SettingsBloc(settingsRepository: sl<SettingsRepository>()),
+  );
+  sl.registerFactory<ReportBloc>(
+    () => ReportBloc(
+      productRepository: sl<ProductRepository>(),
+      authRepository: sl<AuthRepository>(),
+    ),
   );
 }

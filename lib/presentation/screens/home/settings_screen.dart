@@ -11,27 +11,30 @@ import 'package:tokoku/presentation/blocs/auth/auth_state.dart';
 import 'package:tokoku/presentation/blocs/user/user_bloc.dart';
 import 'package:tokoku/presentation/blocs/user/user_event.dart';
 import 'package:tokoku/presentation/blocs/user/user_state.dart';
+import 'package:tokoku/presentation/blocs/settings/settings_bloc.dart';
 import 'package:tokoku/presentation/widgets/common/app_button.dart';
 import 'package:tokoku/presentation/widgets/common/loading_overlay.dart';
 
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _SettingsScreenState extends State<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _currentPasswordController;
   late TextEditingController _newPasswordController;
   late TextEditingController _confirmPasswordController;
+  late TextEditingController _adminTokenController;
 
   bool _isCurrentPasswordVisible = false;
   bool _isNewPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  bool _isAdminTokenVisible = false;
   Uint8List? _selectedImageBytes;
   String? _selectedImageName;
 
@@ -50,6 +53,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _currentPasswordController = TextEditingController();
     _newPasswordController = TextEditingController();
     _confirmPasswordController = TextEditingController();
+    _adminTokenController = TextEditingController();
+    
+    // Load current admin token
+    final settingsState = context.read<SettingsBloc>().state;
+    if (settingsState is SettingsLoaded) {
+      _adminTokenController.text = settingsState.code;
+    }
   }
 
   @override
@@ -59,6 +69,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
+    _adminTokenController.dispose();
     super.dispose();
   }
 
@@ -83,124 +94,179 @@ class _ProfileScreenState extends State<ProfileScreen> {
           : null;
 
       context.read<UserBloc>().add(
-        UserUpdateRequested(
-          updatedUser,
-          password: newPassword,
-          imageBytes: _selectedImageBytes,
-          imageName: _selectedImageName,
-          originalImageUrl: user.photoUrl,
-        ),
-      );
+            UserUpdateRequested(
+              updatedUser,
+              password: newPassword,
+              imageBytes: _selectedImageBytes,
+              imageName: _selectedImageName,
+              originalImageUrl: user.photoUrl,
+            ),
+          );
+    }
+  }
+
+  void _onUpdateAdminToken() {
+    if (_adminTokenController.text.isNotEmpty) {
+      context.read<SettingsBloc>().add(
+            SettingsUpdateRequested(_adminTokenController.text.trim()),
+          );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<UserBloc, UserState>(
-      listener: (context, state) {
-        if (state is UserLoaded) {
-          final authState = context.read<AuthBloc>().state;
-          if (authState is! AuthAuthenticated) return;
-          
-          final user = authState.user;
-          final updatedUser = state.users.firstWhere(
-            (u) => u.uid == user.uid,
-            orElse: () => user,
-          );
-          context.read<AuthBloc>().add(AuthUserUpdated(updatedUser));
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is AuthUnauthenticated) {
+              // Tidak perlu navigasi manual karena GoRouter sudah menghandle via refreshListenable
+            }
+          },
+        ),
+        BlocListener<UserBloc, UserState>(
+          listener: (context, state) {
+            if (state is UserLoaded) {
+              final authState = context.read<AuthBloc>().state;
+              if (authState is! AuthAuthenticated) return;
+              
+              final user = authState.user;
+              final updatedUser = state.users.firstWhere(
+                (u) => u.uid == user.uid,
+                orElse: () => user,
+              );
+              context.read<AuthBloc>().add(AuthUserUpdated(updatedUser));
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profil berhasil diperbarui'),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          _currentPasswordController.clear();
-          _newPasswordController.clear();
-          _confirmPasswordController.clear();
-          setState(() {
-            _selectedImageBytes = null;
-            _selectedImageName = null;
-          });
-        } else if (state is UserError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      },
-      child: BlocBuilder<UserBloc, UserState>(
-        builder: (context, state) {
-          final isLoading = state is UserLoading;
-          final authState = context.watch<AuthBloc>().state;
-          
-          UserEntity? user;
-          if (authState is AuthAuthenticated) {
-            user = authState.user;
-          }
-
-          return LoadingOverlay(
-            isLoading: isLoading,
-            child: user == null
-                ? const SizedBox.shrink()
-                : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 20),
-                    _buildProfileHeader(user),
-                    const SizedBox(height: 24),
-                    _buildMenuCard(
-                      items: [
-                        _buildMenuItem(
-                          icon: Icons.person_outline_rounded,
-                          title: 'Data Akun',
-                          onTap: () => _showAccountInfoDialog(user!),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'PENGATURAN',
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildMenuCard(
-                      items: [
-                        _buildMenuItem(
-                          icon: Icons.lock_outline_rounded,
-                          title: 'Ubah Password',
-                          onTap: _showChangePasswordDialog,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    AppButton(
-                      text: 'Keluar',
-                      color: AppColors.error,
-                      onPressed: () => context.read<AuthBloc>().add(
-                        const AuthSignOutRequested(),
-                      ),
-                      icon: Icons.logout_rounded,
-                    ),
-                    const SizedBox(height: 40),
-                  ],
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Profil berhasil diperbarui'),
+                  backgroundColor: AppColors.success,
+                  behavior: SnackBarBehavior.floating,
                 ),
-              ),
-            ),
+              );
+              _currentPasswordController.clear();
+              _newPasswordController.clear();
+              _confirmPasswordController.clear();
+              setState(() {
+                _selectedImageBytes = null;
+                _selectedImageName = null;
+              });
+            } else if (state is UserError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        ),
+        BlocListener<SettingsBloc, SettingsState>(
+          listener: (context, state) {
+            if (state is SettingsSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.success,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            } else if (state is SettingsError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            } else if (state is SettingsLoaded) {
+              _adminTokenController.text = state.code;
+            }
+          },
+        ),
+      ],
+      child: BlocBuilder<UserBloc, UserState>(
+        builder: (context, userState) {
+          return BlocBuilder<SettingsBloc, SettingsState>(
+            builder: (context, settingsState) {
+              final authState = context.watch<AuthBloc>().state;
+              final isLoading = userState is UserLoading || 
+                               settingsState is SettingsLoading || 
+                               authState is AuthLoading;
+              
+              // Ambil user secara aman (hindari crash saat logout/loading)
+              UserEntity? user;
+              if (authState is AuthAuthenticated) {
+                user = authState.user;
+              }
+
+              return LoadingOverlay(
+                isLoading: isLoading,
+                child: user == null 
+                  ? const SizedBox.shrink() // Jika user null (sedang logout), tampilkan kosong/loading saja
+                  : SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 20),
+                        _buildProfileHeader(user),
+                        const SizedBox(height: 24),
+                        _buildMenuCard(
+                          items: [
+                            _buildMenuItem(
+                              icon: Icons.person_outline_rounded,
+                              title: 'Data Akun',
+                              onTap: () => _showAccountInfoDialog(user!),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'PENGATURAN',
+                            style: AppTextStyles.labelSmall.copyWith(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildMenuCard(
+                          items: [
+                            _buildMenuItem(
+                              icon: Icons.lock_outline_rounded,
+                              title: 'Ubah Password',
+                              onTap: _showChangePasswordDialog,
+                            ),
+                            const Divider(height: 1, indent: 60),
+                            _buildMenuItem(
+                              icon: Icons.vpn_key_outlined,
+                              title: 'Kode Akses Admin',
+                              onTap: _showAdminTokenDialog,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                        AppButton(
+                          text: 'Keluar',
+                          color: AppColors.error,
+                          onPressed: () => context.read<AuthBloc>().add(
+                                const AuthSignOutRequested(),
+                              ),
+                          icon: Icons.logout_rounded,
+                        ),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
@@ -239,8 +305,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? Image.network(
                       user.photoUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _buildDefaultAvatar(user),
+                      errorBuilder: (context, error, stackTrace) => _buildDefaultAvatar(user),
                     )
                   : _buildDefaultAvatar(user),
             ),
@@ -251,7 +316,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user.displayName.isNotEmpty ? user.displayName : '',
+                  user.displayName,
                   style: AppTextStyles.titleLarge.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -396,14 +461,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: _selectedImageBytes != null
                                 ? Image.memory(_selectedImageBytes!, fit: BoxFit.cover)
                                 : user.photoUrl != null
-                                ? Image.network(
-                                    user.photoUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            _buildDefaultAvatar(user),
-                                  )
-                                : _buildDefaultAvatar(user),
+                                    ? Image.network(
+                                        user.photoUrl!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => _buildDefaultAvatar(user),
+                                      )
+                                    : _buildDefaultAvatar(user),
                           ),
                         ),
                         Positioned(
@@ -522,13 +585,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       hintText: '••••••••',
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _isCurrentPasswordVisible
-                              ? Icons.visibility_off
-                              : Icons.visibility,
+                          _isCurrentPasswordVisible ? Icons.visibility_off : Icons.visibility,
                         ),
                         onPressed: () => setModalState(
-                          () => _isCurrentPasswordVisible =
-                              !_isCurrentPasswordVisible,
+                          () => _isCurrentPasswordVisible = !_isCurrentPasswordVisible,
                         ),
                       ),
                     ),
@@ -542,9 +602,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       hintText: '••••••••',
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _isNewPasswordVisible
-                              ? Icons.visibility_off
-                              : Icons.visibility,
+                          _isNewPasswordVisible ? Icons.visibility_off : Icons.visibility,
                         ),
                         onPressed: () => setModalState(
                           () => _isNewPasswordVisible = !_isNewPasswordVisible,
@@ -561,13 +619,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       hintText: '••••••••',
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _isConfirmPasswordVisible
-                              ? Icons.visibility_off
-                              : Icons.visibility,
+                          _isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility,
                         ),
                         onPressed: () => setModalState(
-                          () => _isConfirmPasswordVisible =
-                              !_isConfirmPasswordVisible,
+                          () => _isConfirmPasswordVisible = !_isConfirmPasswordVisible,
                         ),
                       ),
                     ),
@@ -578,6 +633,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onPressed: () {
                       Navigator.pop(context);
                       _onUpdateProfile();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAdminTokenDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(32),
+            child: Form(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text('Kode Akses Admin', style: AppTextStyles.headlineSmall),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Kode ini digunakan untuk pendaftaran akun admin baru.',
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textTertiary),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildLabel('Kode Akses'),
+                  TextFormField(
+                    controller: _adminTokenController,
+                    obscureText: !_isAdminTokenVisible,
+                    decoration: InputDecoration(
+                      hintText: 'Contoh: ADMIN123',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isAdminTokenVisible ? Icons.visibility_off : Icons.visibility,
+                        ),
+                        onPressed: () => setModalState(
+                          () => _isAdminTokenVisible = !_isAdminTokenVisible,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  AppButton(
+                    text: 'Simpan Kode Baru',
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _onUpdateAdminToken();
                     },
                   ),
                 ],

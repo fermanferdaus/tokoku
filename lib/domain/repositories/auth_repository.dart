@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import '../entities/user_entity.dart';
 
@@ -34,5 +34,5 @@ abstract class AuthRepository {
   Future<void> updateUser(UserEntity user, {String? password});
 
   /// Upload foto profil user dan kembalikan URL-nya.
-  Future<String> uploadUserAvatar(File imageFile);
+  Future<String> uploadUserAvatar(Uint8List imageBytes, String fileName);
 }

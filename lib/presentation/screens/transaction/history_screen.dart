@@ -62,12 +62,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _selectDateRange() async {
+    final now = DateTime.now();
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: DateTime(now.year, now.month, now.day, 23, 59, 59),
       initialDateRange: _startDate != null && _endDate != null
-          ? DateTimeRange(start: _startDate!, end: _endDate!)
+          ? DateTimeRange(
+              start: _startDate!,
+              end: _endDate!.isAfter(now) ? now : _endDate!,
+            )
           : null,
       builder: (context, child) {
         return Theme(
@@ -378,12 +382,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   _buildDetailRow(
                     'Kasir',
                     trx['userName'] ??
-                        (context.read<AuthBloc>().state is AuthAuthenticated
-                            ? (context.read<AuthBloc>().state
-                                      as AuthAuthenticated)
-                                  .user
-                                  .displayName
-                            : 'Kasir'),
+                        (() {
+                          final authState = context.read<AuthBloc>().state;
+                          return authState is AuthAuthenticated
+                              ? authState.user.displayName
+                              : 'Kasir';
+                        })(),
                   ),
                   const SizedBox(height: 16),
                   const Divider(),

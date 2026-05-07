@@ -85,7 +85,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
           .authRepository
           .currentUser;
       final displayName = user.displayName;
-      final String cashierName = (displayName != null && displayName.isNotEmpty)
+      final String cashierName = (displayName.isNotEmpty)
           ? displayName
           : (user.email);
 
@@ -114,6 +114,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         total: state.total,
         cash: event.cash,
         change: event.change,
+        paymentMethod: event.paymentMethod,
       );
 
       emit(state.copyWith(isProcessing: false));

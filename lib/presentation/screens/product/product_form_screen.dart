@@ -1,6 +1,4 @@
-import 'dart:io';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,8 +14,6 @@ import '../../../domain/entities/product_entity.dart';
 import '../../../domain/repositories/category_repository.dart';
 import '../../../injection_container.dart';
 import '../../blocs/product/product_bloc.dart';
-import '../../blocs/product/product_event.dart';
-import '../../blocs/product/product_state.dart';
 import '../../widgets/common/app_button.dart';
 
 /// Form shared untuk Tambah dan Edit produk.
@@ -41,7 +37,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   final _sellPriceController = TextEditingController();
   final _stockController = TextEditingController();
 
-  File? _selectedImage;
+  Uint8List? _selectedImageBytes;
+  String? _selectedImageName;
   String? _existingImageUrl;
   String? _selectedCategory;
   bool _isActive = true;
@@ -163,7 +160,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       imageQuality: 80,
     );
     if (picked != null) {
-      setState(() => _selectedImage = File(picked.path));
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _selectedImageBytes = bytes;
+        _selectedImageName = picked.name;
+      });
     }
   }
 
@@ -203,13 +204,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       context.read<ProductBloc>().add(
         ProductUpdateRequested(
           product: product,
-          imageFile: _selectedImage,
+          imageBytes: _selectedImageBytes,
+          imageName: _selectedImageName,
           originalImageUrl: widget.product?.imageUrl,
         ),
       );
     } else {
       context.read<ProductBloc>().add(
-        ProductAddRequested(product: product, imageFile: _selectedImage),
+        ProductAddRequested(product: product, imageBytes: _selectedImageBytes, imageName: _selectedImageName),
       );
     }
   }
@@ -590,14 +592,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               child: _buildImagePreview(),
             ),
           ),
-          if (_selectedImage != null ||
+          if (_selectedImageBytes != null ||
               (_existingImageUrl != null && _existingImageUrl!.isNotEmpty))
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: TextButton(
                 onPressed: () {
                   setState(() {
-                    _selectedImage = null;
+                    _selectedImageBytes = null;
+                    _selectedImageName = null;
                     _existingImageUrl = null;
                   });
                 },
@@ -615,11 +618,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   }
 
   Widget _buildImagePreview() {
-    if (_selectedImage != null) {
+    if (_selectedImageBytes != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Image.file(
-          _selectedImage!,
+        child: Image.memory(
+          _selectedImageBytes!,
           fit: BoxFit.cover,
           width: double.infinity,
         ),
@@ -629,13 +632,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     if (_existingImageUrl != null && _existingImageUrl!.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: CachedNetworkImage(
-          imageUrl: _existingImageUrl!,
+        child: Image.network(
+          _existingImageUrl!,
           fit: BoxFit.cover,
           width: double.infinity,
-          placeholder: (context, url) =>
-              const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          errorWidget: (context, url, error) => _buildImagePlaceholder(),
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+          },
+          errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
         ),
       );
     }
@@ -705,7 +710,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       children: [
         Expanded(
           child: DropdownButtonFormField<String>(
-            value:
+            initialValue:
                 _categories.any(
                   (c) =>
                       c.id == _selectedCategory || c.name == _selectedCategory,

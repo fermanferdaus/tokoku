@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:tokoku/data/models/user_model.dart';
 
 import '../../core/errors/exceptions.dart';
@@ -106,9 +106,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<String> uploadUserAvatar(File imageFile) async {
+  Future<String> uploadUserAvatar(Uint8List imageBytes, String fileName) async {
     try {
-      return await _remoteDatasource.uploadUserAvatar(imageFile);
+      return await _remoteDatasource.uploadUserAvatar(imageBytes, fileName);
     } on AuthException catch (e) {
       throw AuthFailure(e.message);
     }

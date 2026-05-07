@@ -37,6 +37,17 @@ Future<void> main() async {
     logger.i('Aplikasi Tokoku siap dijalankan');
   } catch (e, stackTrace) {
     logger.f('Gagal menginisialisasi aplikasi', error: e, stackTrace: stackTrace);
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text('Gagal memuat aplikasi.\n$e',
+                textAlign: TextAlign.center),
+          ),
+        ),
+      ),
+    );
+    return;
   }
 
   runApp(const App());
